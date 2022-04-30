@@ -2,20 +2,36 @@
 # -*- coding: utf-8 -*-
 # AUDIOPHONICS RASPDAC MINI LMS OLED Script #
 # 11 Decembre 2018 
-from __future__ import unicode_literals
+
+
+# Peter Sketch June 2021
+# Update to Python3
+# Add two parameters : LMS IP Address and Player MAC
+# Default to discover player mac from active interface vs. hardcoded using netifaces
+# Default LMS IP to 127.0.0.1 if not passed as param
+# Removed redundent imports
+
+
+
+
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+import importlib
+importlib.reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 import os
 import time
 import socket
 #import smbus
 #bus = smbus.SMBus(1)
-import re
-import subprocess
+#import re
+#import subprocess
 #import json
-import urllib2
+#import urllib.request, urllib.error, urllib.parse
+import urllib.parse
+
+import netifaces
+
 from subprocess import Popen, PIPE
 
 from PIL import Image
@@ -28,7 +44,9 @@ from pylms.player import Player
 from luma.core.interface.serial import spi
 from luma.core.render import canvas
 from luma.oled.device import ssd1322
-#import RPi.GPIO as GPIO
+
+
+
 serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
 device = ssd1322(serial, rotate=0, mode="1")
 
@@ -43,96 +61,221 @@ def make_font(name, size):
         os.path.dirname(__file__), 'fonts', name))
     return ImageFont.truetype(font_path, size)
 
-font_title              = make_font('msyh.ttf', 26)
+font_title		= make_font('msyh.ttf', 26)
 font_info		= make_font('msyh.ttf', 20)
 font_vol		= make_font('msyh.ttf', 55)
 font_ip			= make_font('msyh.ttf', 15)
 font_time		= make_font('msyh.ttf', 18)
 font_20			= make_font('msyh.ttf', 18)
 font_date		= make_font('arial.ttf', 25)
-#font_logo		= make_font('msyh.ttf', 24)
 font_logo		= make_font('arial.ttf', 42)
 font_32			= make_font('arial.ttf', 50)
 awesomefont		= make_font("fontawesome-webfont.ttf", 16)
-awesomefontbig		= make_font("fontawesome-webfont.ttf", 42)
+awesomefontbig	= make_font("fontawesome-webfont.ttf", 42)
 
-speaker			= "\uf028"
+# debug
+font_debug			= make_font('msyh.ttf', 10)
+
+# speaker			= "\uf028"
 wifi			= "\uf1eb"
 link			= "\uf0e8"
-clock			= "\uf017"
+#clock			= "\uf017"
 
-# PyLms Connection
-while True :
-	try :
-		with canvas(device) as draw:
-			draw.text((27, 0),"Try to connect", font=font_time,fill="white")
-			draw.text((25, 34),"to LMS", font=font_time,fill="white")
-		time.sleep(1)
-		sc = Server(hostname="192.168.3.20", port=9090, username="user", password="password", charset='utf8')
-		sc.connect()
-		print "Version: %s" % sc.get_version()
-		print "Try connect player"
-		sq = sc.get_player("00:11:22:33:44:55")
-		print sq.get_name()
-		
-	except : 
-		print("No player connected to LMS")
-		with canvas(device) as draw:
-			draw.text((15, 0),"Player not connected", font=font_time,fill="white")
-			draw.text((25, 34),"to LMS", font=font_time,fill="white")
-		time.sleep(2)
+
+default_gateway_interface = netifaces.gateways()['default'][netifaces.AF_INET][1]
+
+print ("Default Gateway Interface:" + default_gateway_interface)
+
+if default_gateway_interface[0:2] == "wl" :
+	print ("WiFi")
+	is_wifi = True
+else :
+	print ("Not WiFi")
+	is_wifi = False
+
+def get_player_mac():
+	mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
+	if mac != "":
+		print ("Default MAC :" + mac)
+		return mac
 	else :
-		break
+		return "00:11:22:33:44:55"
 
-print sq.get_mode()
+def get_player_ip():
+	get_ip = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_INET][0]['addr']
+	if get_ip == "":
+		get_ip = "127.0.0.1"
+	print ("IP :"+ get_ip)
+	return get_ip
 
-def getWanIP():
-    #can be any routable address,
-    fakeDest = ("223.5.5.5", 53)
-    wanIP = ""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(fakeDest)
-        wanIP = s.getsockname()[0]
-        s.close()
-    except Exception, e:
-        pass
-    return wanIP
+def get_lms_ip():
+	if len(sys.argv) > 1 :
+		lmsip = str(sys.argv[1])
+	else :
+		#Discover the LMS IP Address
+		print("Discovering LMS IP")
+		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+		sock.bind((ip,3483))
 
-def GetLANIP():
-   cmd = "ip addr show eth0 | grep inet  | grep -v inet6 | awk '{print $2}' | cut -d '/' -f 1"
-   p = Popen(cmd, shell=True, stdout=PIPE)
-   output = p.communicate()[0]
-   return output[:-1]
-   
-def GetInput():
+		sock.settimeout(2.0)
+
+		sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
+		try:
+			data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+		except (socket.error, socket.timeout):
+			lmsip = "127.0.0.1"
+		else:
+			print ("Discovered Server: ", str(data).split("\\x0b")[1].replace("'",""))
+			print ("Discovered Server IP: ",addr[0])
+			lmsip = addr[0]
+		finally:
+			sock.close()
+
+	print ("LMSIP :" + lmsip)
+	return lmsip
+	
+def get_input():
 	cmd = "amixer sget -c 0 'I2S/SPDIF Select' | grep Item0: | awk '{print $2}' "
 	p = Popen(cmd, shell=True, stdout=PIPE)
-	output = p.communicate()[0]
+	output = p.communicate()[0].decode()
 	return output[:-1]
 
-def GetBitrate():
-	cmd = "cat /proc/asound/card0/pcm0p/sub0/hw_params | awk '{print $2}' | sed -n 2p | cut -d '_' -f 1"
-	p = Popen(cmd, shell=True, stdout=PIPE)
-	output = p.communicate()[0]
-	output = output[:-1]
-	if output == "S16" :
+
+def get_song_info():
+	while True:
+		try:
+			status = sq.request("status - 1 tags:galdIrTNo",1)
+		except:
+			server_connect()
+		else:
+			break
+		
+	results = status.split(" ")
+	idx = 0
+	for values in results:
+		results[idx] = urllib.parse.unquote(values)
+		idx = idx+1
+	return results
+
+def get_song_item(item):
+    for values in song_info:
+        key = values.split(":")[0]
+        if key == item:
+            return values.split(":")[1]
+    return ""
+
+def get_fixed_volume():
+	output = get_song_item("digital_volume_control")
+	if output == "0" :
+		return True
+	else :
+		return False	
+
+def get_file_type():
+	output = get_song_item("type") 
+	if output != "" :
+		return output
+	else :
+		return ""
+
+
+def get_sample_size():
+	output = get_song_item("samplesize") 
+	if output == "16" :
 		return "16 Bit / "
-	elif output == "S24" :
+	elif output == "24" :
 		return "24 Bit / "
-	elif output == "S32" :
+	elif output == "32" :
 		return "32 Bit / "
 	else :
 		return output
 
-def GetSamplerate():
-	cmd = "cat /proc/asound/card0/pcm0p/sub0/hw_params | awk '{print $2}' | sed -n 5p"
-	p = Popen(cmd, shell=True, stdout=PIPE)
-	output = p.communicate()[0]
-	output = output[:-1]
+def get_sample_rate():
+	output = get_song_item("samplerate") 
 	if output != "" :
-		output = str(float(output)/1000)+"k"
+		return str(float(output)/1000)+"k"
+	else :
 		return output
+
+def get_bitrate():
+	output = get_song_item("bitrate") 
+
+	if output != "" :
+		return str(output)
+	else :
+		return ""
+
+def get_duration():
+	output = get_song_item("duration") 
+	if output != "" :
+		output = float(output)
+		return output
+	else :
+		return 0
+
+def get_elapsed_time():
+	output = get_song_item("time") 
+	if output != "" :
+		output = float(output)
+		return output
+	else :
+		return 0
+
+
+def get_volume():
+	output = get_song_item("mixer volume") 
+	if output != "" :
+		output = str(output)
+	return output
+
+# PyLms Connection
+
+def server_connect():
+	while True :
+		try :
+
+			global ip 
+			ip = get_player_ip()
+
+			lmsip = str(get_lms_ip())
+
+			player_mac = str(get_player_mac())
+			
+			with canvas(device) as draw:
+				draw.text((27, 0),"Try to connect", font=font_time,fill="white")
+				draw.text((25, 34),"to LMS", font=font_time,fill="white")
+			time.sleep(1)
+			sc = Server(hostname=lmsip, port=9090, username="user", password="password", charset='utf8')
+			sc.connect()
+			print("Version: %s" % sc.get_version())
+			print("Try connect player")
+
+
+			global sq
+			sq = sc.get_player(player_mac)
+			print(sq.get_name())
+			
+		
+		except Exception as e:
+			print("Player " + player_mac + " not connected to LMS" + lmsip)
+
+			with canvas(device) as draw:
+#debug
+				draw.text((5, 20),"E :" + str(e), font=font_debug,fill="white")
+
+				draw.text((15, 0),"Player " + player_mac + " not connected", font=font_time,fill="white")
+				draw.text((25, 34),"to LMS " + lmsip, font=font_time,fill="white")
+			time.sleep(2)
+		else :
+			break
+
+
+# Connect to the lms server and set sq handle
+server_connect()
+
+print(sq.get_mode())
+
 
 # OLED images
 image		= Image.new('1', (oled_width, oled_height))
@@ -150,32 +293,6 @@ screensave = 3
 
 shift		= 1
 
-# GPIO.setmode(GPIO.BCM)
-# GPIO.setwarnings(False)
-# GPIO.setup(22, GPIO.IN,pull_up_down=GPIO.PUD_UP)
-# spdif=False;
-
-# def InputSelect():
-    # global spdif
-    # if(spdif==False):
-	# spdif=True
-	# os.system("amixer sset -c 1 'I2S/SPDIF Select' SPDIF")
-    # elif(spdif==True):
-	# spdif=False
-	# os.system("amixer sset -c 1 'I2S/SPDIF Select' I2S")
-
-
-# def optionButPress(value):
-    # global startt,endt
-    # if GPIO.input(22) == 1:
-        # startt = time.time()
-    # if GPIO.input(22) == 0:
-        # endt = time.time()
-	# InputSelect()
-
-#GPIO.add_event_detect(22, GPIO.BOTH, callback=optionButPress, bouncetime=200)
-#os.system("amixer sset -c 1 'I2S/SPDIF Select' I2S")
-
 with canvas(device) as draw:
 	draw.text((6, 0),"Audiophonics", font=font_logo,fill="white")
 time.sleep(2)
@@ -190,45 +307,66 @@ info_name = ""
 info_state = ""
 
 info_duration = 0
-time_val = time_min = time_sec = vol_val =  0
-vol_val = 0
+time_val = time_min = time_sec = volume_val =  0
+volume_val = 0
 
 timer_rates = 10
 timer_input = 10
-bit_val = ""
-samp_val = ""
+
+sample_size_val = ""
+sample_rate_val = ""
+bitrate_val = ""
+
+
 
 try:
 	while True:
+		# Get the current song info
+		global song_info
+		song_info = get_song_info()
 
-		info_file = sq.request("title ?",1)
-		info_state = sq.get_mode()
+		info_file = get_song_item("title") #sq.request("title ?",1)
+		info_state = get_song_item("mode") #sq.get_mode()
 
 # One time update		
 		if info_file_store != info_file or info_state_store != info_state:
 			timer_rates = 10
-			info_artist     = urllib2.unquote(sq.request("artist ?",1).encode('utf-8'))+""
+			info_artist     = get_song_item("artist")
 			if info_artist == "" :
 				info_artist     = "No Artist"
-			info_album      = urllib2.unquote(sq.request("album ?",1).encode('utf-8'))+""
+			info_album      = get_song_item("album")
+			# If there's no Album, is it an internet radio stream
+			remote_title = get_song_item("album")
 			if info_album == "" :
-				info_album     = "No Album"
-			info_title      = urllib2.unquote(sq.request("title ?",1).encode('utf-8'))+""
+				# If there's no Album, is it an internet radio stream
+				remote_title = get_song_item("remote_title")
+				if remote_title != "" :
+					info_album = remote_title
+				else :
+					info_album     = "No Album"
+
+			info_title      = get_song_item("title")
 			#info_name      = 
 			try :
-				info_duration   = sq.get_track_duration()
+				info_duration   = get_duration() #sq.get_track_duration()
 			except :
 				info_duration   = 0
 		if timer_rates > 0 :
-			info_state = sq.get_mode()
-			bit_val = "" #str(GetBitrate()) Tjs 32 sous LMS
-			samp_val = str(GetSamplerate())
-			if samp_val == "176.4k" :
-				samp_val = "DSD64"
-			elif samp_val == "352.8k" :
-				samp_val = "DSD128"
-			elif samp_val == "705.6k" :
-				samp_val = "DSD256"
+			info_state = get_song_item("mode") #sq.get_mode()
+			sample_size_val = str(get_sample_size())
+			sample_rate_val = str(get_sample_rate())
+			filetype_val = str(get_file_type())
+			if sample_rate_val == "176.4k" :
+				sample_rate_val = "DSD64"
+			elif sample_rate_val == "352.8k" :
+				sample_rate_val = "DSD128"
+			elif sample_rate_val == "705.6k" :
+				sample_rate_val = "DSD256"
+			
+			if sample_rate_val != "" :
+				bitrate_val = " / " + str(get_bitrate())
+			else :
+				bitrate_val = str(get_bitrate())
 			timer_rates -= 1
 
 		info_file_store = info_title
@@ -236,7 +374,7 @@ try:
 		
 # Continuous update			
 		try :
-			time_val = sq.get_time_elapsed()
+			time_val = get_elapsed_time()
 			time_bar = time_val
 			time_min = time_val/60
 			time_sec = time_val%60
@@ -246,43 +384,45 @@ try:
 		except :
 			time_val = 0
 
-		vol_val = str(sq.get_volume())
+		if get_fixed_volume() == False :
+			volume_val = get_volume()
+		else:
+			volume_val = str(100)
 		
 		timer_input -= 1
 		if timer_input == 0 :
-			dac_input = str(GetInput())
+			dac_input = str(get_input())
 			timer_input = 10
 		
 		
-		# Volume change screen
-		if vol_val != vol_val_store : timer_vol = 20
+		# Volume change screen.  Only show if it's not fixed volume.
+		if volume_val != vol_val_store : timer_vol = 20
 		if timer_vol > 0 :
 			with canvas(device) as draw:
-				vol_width, char = font_vol.getsize(vol_val)
+				vol_width, char = font_vol.getsize(volume_val)
 				x_vol = ((oled_width - vol_width) / 2)
 				# Volume Display
 				draw.text((5, 5), text="\uf028", font=awesomefontbig, fill="white")
-				draw.text((x_vol, -15), vol_val, font=font_vol, fill="white")
+				draw.text((x_vol, -15), volume_val, font=font_vol, fill="white")
 				# Volume Bar
 				draw.rectangle((0,53,255,60), outline=1, fill=0)
-				Volume_bar = ((int(float(vol_val)) * 2.52)+2)
+				Volume_bar = ((int(float(volume_val)) * 2.52)+2)
 				draw.rectangle((2,55,Volume_bar,58), outline=0, fill=1)
-			vol_val_store = vol_val
+			vol_val_store = volume_val
 			timer_vol = timer_vol - 1
 			screen_sleep = 0
-			time.sleep(0.1)
-	
+			time.sleep(0.1)	
 
 		# SPDIF screen
 		elif(dac_input == "'SPDIF'"):
 			if screen_sleep < 600 :
 				with canvas(device) as draw:
 					draw.text((20, -4),"SPDIF", font=font_title,fill="white")
-					draw.text((45, 33), vol_val, font=font_title, fill="white")
+					draw.text((45, 33), volume_val, font=font_title, fill="white")
 					draw.text((15, 41), text="\uf028", font=awesomefont, fill="white")
 					# Volume Bar
 					draw.rectangle((120,0,127,62), outline=1, fill=0)
-					Volume_bar = (58 - (int(float(vol_val)) / 1.785))
+					Volume_bar = (58 - (int(float(volume_val)) / 1.785))
 					draw.rectangle((122,Volume_bar,125,60), outline=0, fill=1)				
 				time.sleep(0.5)	
 				screen_sleep = screen_sleep + 1
@@ -328,16 +468,16 @@ try:
 					dura_val = "/ " + str(dura_min)+":"+str(dura_sec)
 				else : 
 					dura_val = ""
-				bit_val = bytes(bit_val)	#2018.1.5
-				samp_val = bytes(samp_val)	#2018.1.7				
+				
 				artist_offset    = 10;
 				album_offset    = 10;
 				title_offset     = 10;
 				title_width, char  = font_info.getsize(info_title)
 				artist_width, char  = font_info.getsize(info_artist)
 				album_width, char  = font_info.getsize(info_album)
-				bitrate_width, char = font_time.getsize(samp_val + bit_val)
-				
+				# bitrate_width, char = font_time.getsize(samprate_val + sampsize_val + bitrate_val) Wrong font
+				bitrate_width, char = font_ip.getsize(sample_rate_val + sample_size_val + bitrate_val + " " + filetype_val)
+
 				current_page = 0
 
 			# OFFSETS*****************************************************
@@ -367,13 +507,15 @@ try:
 
 			x_bitrate = (oled_width - bitrate_width) / 2
 
-
+			if x_bitrate < 0 :
+				x_bitrate = 0
+						
 			with canvas(device) as draw:
 				if current_page < 150 :	
 					draw.text((x_title, -7), info_title, font=font_info, fill="white")
 					if title_width < -(title_offset - oled_width) and title_width > oled_width :
 						draw.text((x_title + title_width + 10,-7), "- " + info_title, font=font_info, fill="white")					
-					draw.text((x_bitrate, 20), (bit_val + samp_val), font=font_ip, fill="white")					
+					draw.text((x_bitrate, 20), (sample_size_val + sample_rate_val + bitrate_val + " " + filetype_val), font=font_ip, fill="white")					
 					if info_state == "pause": 
 						draw.text((0, 43), text="\uf04c", font=awesomefont, fill="white")
 					else:
@@ -381,8 +523,10 @@ try:
 						draw.text((55, 41), dura_val, font=font_time, fill="white")
 					#draw.text((58, 48), text="\uf001", font=awesomefont, fill="white")	
 					draw.rectangle((0,40,time_bar,44), outline=0, fill=1)
-					draw.text((200, 44), text="\uf028", font=awesomefont, fill="white")	
-					draw.text((220, 41), vol_val, font=font_time, fill="white")
+
+					if get_fixed_volume() == False :
+						draw.text((200, 44), text="\uf028", font=awesomefont, fill="white")	
+						draw.text((220, 41), volume_val, font=font_time, fill="white")
 				
 					current_page = current_page + 1
 					artist_offset = 10
@@ -404,8 +548,10 @@ try:
 						draw.text((0, 41), time_val, font=font_time, fill="white")
 						draw.text((55, 41), dura_val, font=font_time, fill="white")
 					draw.rectangle((0,40,time_bar,44), outline=0, fill=1)
-					draw.text((200, 44), text="\uf028", font=awesomefont, fill="white")
-					draw.text((220, 41), vol_val, font=font_time, fill="white")
+
+					if get_fixed_volume() == False :
+						draw.text((200, 44), text="\uf028", font=awesomefont, fill="white")
+						draw.text((220, 41), volume_val, font=font_time, fill="white")
 					current_page = current_page + 1
 					
 					if current_page == 300 :
@@ -416,20 +562,21 @@ try:
 
 		else:
 			# Time IP screen
-			#ip = getWanIP()
-			ip = str(GetLANIP())
 			if screen_sleep < 20000 :
 				with canvas(device) as draw:
-					if ip != "":
+					if is_wifi == False :
 						draw.text((140, 45), ip, font=font_ip, fill="white")
 						draw.text((120, 45), link, font=awesomefont, fill="white")
 					else:
-						draw.text((140, 45),time.strftime("No LAN IP"), font=font_ip, fill="white")
+						#draw.text((140, 45),time.strftime("No LAN IP"), font=font_ip, fill="white")
+						# draw.text((140, 45),time.strftime(""), font=font_ip, fill="white")
+						draw.text((140, 45), ip, font=font_ip, fill="white")
 						draw.text((120, 45), wifi, font=awesomefont, fill="white")
 
 					draw.text((28,-10),time.strftime("%X"), font=font_32,fill="white")
-					draw.text((20, 40), vol_val, font=font_time, fill="white")
-					draw.text((1, 43), text="\uf028", font=awesomefont, fill="white")
+					if get_fixed_volume() == False :
+						draw.text((20, 40), volume_val, font=font_time, fill="white")
+						draw.text((1, 43), text="\uf028", font=awesomefont, fill="white")
 				screen_sleep = screen_sleep + 1
 			else :
 				with canvas(device) as draw:
@@ -442,7 +589,5 @@ try:
 except Exception as e:
     exc_type, exc_obj, exc_tb = sys.exc_info()
     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    print(exc_type, fname, exc_tb.tb_lineno)
-
-
+    print((exc_type, fname, exc_tb.tb_lineno))
 
