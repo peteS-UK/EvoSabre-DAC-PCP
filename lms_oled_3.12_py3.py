@@ -7,39 +7,39 @@
 # Peter Sketch June 2021
 # Update to Python3
 # Add two parameters : LMS IP Address and Player MAC
-# Default to discover player mac from active interface vs. hardcoded using netifaces
+# Default to discover player mac from active interface using netifaces vs. hardcoded 
 # Default LMS IP to 127.0.0.1 if not passed as param
 # Removed redundent imports
-
+# Manage fixed volume
+# Discover song info more efficiently
+# Display WiFI IP address instead of LAN IP when WiFi connected
+# Dec 21
+# Discover LMS IP address
+# Enhance display track info
+# Loop to reconnect to rebooting LMS server
+# Apr 22
+# Remove redundent SPDIF code and imports
 
 
 
 import sys
 import importlib
 importlib.reload(sys)
-# sys.setdefaultencoding('utf-8')
+
 
 import os
 import time
 import socket
-#import smbus
-#bus = smbus.SMBus(1)
-#import re
-#import subprocess
-#import json
-#import urllib.request, urllib.error, urllib.parse
+
 import urllib.parse
 
 import netifaces
-
-from subprocess import Popen, PIPE
 
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 
 from pylms.server import Server
-from pylms.player import Player
 
 from luma.core.interface.serial import spi
 from luma.core.render import canvas
@@ -135,13 +135,6 @@ def get_lms_ip():
 	print ("LMSIP :" + lmsip)
 	return lmsip
 	
-def get_input():
-	cmd = "amixer sget -c 0 'I2S/SPDIF Select' | grep Item0: | awk '{print $2}' "
-	p = Popen(cmd, shell=True, stdout=PIPE)
-	output = p.communicate()[0].decode()
-	return output[:-1]
-
-
 def get_song_info():
 	while True:
 		try:
@@ -262,7 +255,7 @@ def server_connect():
 
 			with canvas(device) as draw:
 #debug
-				draw.text((5, 20),"E :" + str(e), font=font_debug,fill="white")
+#				draw.text((5, 20),"E :" + str(e), font=font_debug,fill="white")
 
 				draw.text((15, 0),"Player " + player_mac + " not connected", font=font_time,fill="white")
 				draw.text((25, 34),"to LMS " + lmsip, font=font_time,fill="white")
@@ -391,7 +384,6 @@ try:
 		
 		timer_input -= 1
 		if timer_input == 0 :
-			dac_input = str(get_input())
 			timer_input = 10
 		
 		
@@ -412,27 +404,6 @@ try:
 			timer_vol = timer_vol - 1
 			screen_sleep = 0
 			time.sleep(0.1)	
-
-		# SPDIF screen
-		elif(dac_input == "'SPDIF'"):
-			if screen_sleep < 600 :
-				with canvas(device) as draw:
-					draw.text((20, -4),"SPDIF", font=font_title,fill="white")
-					draw.text((45, 33), volume_val, font=font_title, fill="white")
-					draw.text((15, 41), text="\uf028", font=awesomefont, fill="white")
-					# Volume Bar
-					draw.rectangle((120,0,127,62), outline=1, fill=0)
-					Volume_bar = (58 - (int(float(volume_val)) / 1.785))
-					draw.rectangle((122,Volume_bar,125,60), outline=0, fill=1)				
-				time.sleep(0.5)	
-				screen_sleep = screen_sleep + 1
-			else : 
-				with canvas(device) as draw:
-					screensave += 2
-					if screensave > 120 : 
-						screensave = 3
-					draw.text((screensave, 45), ".", font=font_time, fill="white")
-				time.sleep(1)
 			
 		# Play screen
 		elif info_state != "stop":
@@ -475,7 +446,6 @@ try:
 				title_width, char  = font_info.getsize(info_title)
 				artist_width, char  = font_info.getsize(info_artist)
 				album_width, char  = font_info.getsize(info_album)
-				# bitrate_width, char = font_time.getsize(samprate_val + sampsize_val + bitrate_val) Wrong font
 				bitrate_width, char = font_ip.getsize(sample_rate_val + sample_size_val + bitrate_val + " " + filetype_val)
 
 				current_page = 0
@@ -565,11 +535,11 @@ try:
 			if screen_sleep < 20000 :
 				with canvas(device) as draw:
 					if is_wifi == False :
+						# Wifi IP Address
 						draw.text((140, 45), ip, font=font_ip, fill="white")
 						draw.text((120, 45), link, font=awesomefont, fill="white")
 					else:
-						#draw.text((140, 45),time.strftime("No LAN IP"), font=font_ip, fill="white")
-						# draw.text((140, 45),time.strftime(""), font=font_ip, fill="white")
+						# LAN IP Address
 						draw.text((140, 45), ip, font=font_ip, fill="white")
 						draw.text((120, 45), wifi, font=awesomefont, fill="white")
 
