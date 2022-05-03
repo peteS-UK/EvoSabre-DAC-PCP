@@ -84,61 +84,77 @@ link			= "\uf0e8"
 
 default_gateway_interface = netifaces.gateways()['default'][netifaces.AF_INET][1]
 
-print ("Default Gateway Interface:" + default_gateway_interface)
+print ("Default Gateway Interface: " + default_gateway_interface)
 
 if default_gateway_interface[0:2] == "wl" :
-	print ("WiFi")
+	print ("WiFi Network Detected")
 	is_wifi = True
 else :
-	print ("Not WiFi")
+	print ("Non WiFi WiFi Network Detected")
 	is_wifi = False
 
+def process_params(item):
+	for params in sys.argv:
+		key = params.split("=")[0]
+		if key.upper() == item:
+			return str(params.split("=")[1])
+	return ""
+
 def get_player_mac():
-	mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
-	if mac != "":
-		print ("Default MAC :" + mac)
-		return mac
+	if len(process_params("MAC")) > 1 :
+		return process_params("MAC")
 	else :
-		return "00:11:22:33:44:55"
+		mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
+		if mac != "":
+			print ("Player MAC: " + mac)
+			return mac
+		else :
+			print("MAC Discovery failed.  Using 00:11:22:33:44:55")
+			return "00:11:22:33:44:55"
 
 def get_player_ip():
 	get_ip = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_INET][0]['addr']
 	if get_ip == "":
 		get_ip = "127.0.0.1"
-	print ("IP :"+ get_ip)
+	print ("Player IP: "+ get_ip)
 	return get_ip
 
 def get_lms_ip():
-	if len(sys.argv) > 1 :
-		lmsip = str(sys.argv[1])
+	if len(process_params("LMSIP")) > 1 :
+		lms_ip = process_params("LMSIP")
 	else :
 		#Discover the LMS IP Address
 		print("Discovering LMS IP")
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		sock.bind((ip,3483))
+		sock.bind((player_ip,3483))
 
 		sock.settimeout(2.0)
 
 		sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
 		try:
 			data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+
 		except (socket.error, socket.timeout):
-			lmsip = "127.0.0.1"
+			print ("	Discovery Failure")
+			lms_ip = "127.0.0.1"
+			print ("	LMS IP: " + lms_ip)
+			lms_name = ""
 		else:
-			print ("Discovered Server: ", str(data).split("\\x0b")[1].replace("'",""))
-			print ("Discovered Server IP: ",addr[0])
-			lmsip = addr[0]
+			#print ("	Broadcast Response: ", data)
+			lms_name = data.decode('UTF-8')[len("eName")+1:]
+			lms_ip = str(addr[0])
+			print ("	Discovered Server: ", lms_name)
+			print ("	Discovered Server IP: ",lms_ip)
 		finally:
 			sock.close()
 
-	print ("LMSIP :" + lmsip)
-	return lmsip
+	return lms_ip,lms_name
 	
 def get_song_info():
 	while True:
 		try:
-			status = sq.request("status - 1 tags:galdIrTNo",1)
+			status = player_handle.request("status - 1 tags:galdIrTNo",1)
 		except:
 			server_connect()
 		else:
@@ -228,46 +244,39 @@ def server_connect():
 	while True :
 		try :
 
-			global ip 
-			ip = get_player_ip()
+			global player_ip 
+			player_ip = get_player_ip()
 
-			lmsip = str(get_lms_ip())
-
+			lms_ip, lms_name = get_lms_ip()
 			player_mac = str(get_player_mac())
 			
 			with canvas(device) as draw:
-				draw.text((27, 0),"Try to connect", font=font_time,fill="white")
-				draw.text((25, 34),"to LMS", font=font_time,fill="white")
+				draw.text((15, 0),"Connecting to LMS", font=font_time,fill="white")
+				if len(lms_name) > 0 :
+					draw.text((20, 17),"LMS Name: " + lms_name, font=font_time,fill="white")
+				draw.text((20, 34),"LMS IP:  " + lms_ip, font=font_time,fill="white")
 			time.sleep(1)
-			sc = Server(hostname=lmsip, port=9090, username="user", password="password", charset='utf8')
-			sc.connect()
-			print("Version: %s" % sc.get_version())
-			print("Try connect player")
+			server_handle = Server(hostname=lms_ip, port=9090, username="user", password="password", charset='utf8')
+			server_handle.connect()
+			print("LMS Version: %s" % server_handle.get_version())
 
-
-			global sq
-			sq = sc.get_player(player_mac)
-			print(sq.get_name())
+			global player_handle
+			player_handle = server_handle.get_player(player_mac)
+			print("Player Name: %s" % player_handle.get_name())
 			
 		
 		except Exception as e:
-			print("Player " + player_mac + " not connected to LMS" + lmsip)
+			print("Player " + player_mac + " not connected to LMS : " + lms_ip)
 
 			with canvas(device) as draw:
 #debug
 #				draw.text((5, 20),"E :" + str(e), font=font_debug,fill="white")
-
-				draw.text((15, 0),"Player " + player_mac + " not connected", font=font_time,fill="white")
-				draw.text((25, 34),"to LMS " + lmsip, font=font_time,fill="white")
-			time.sleep(2)
+				draw.text((15, 0),"Player Not Connected", font=font_time,fill="white")
+				draw.text((20, 17),"MAC: " + player_mac, font=font_time,fill="white")
+				draw.text((20, 34),"LMS: " + lms_ip, font=font_time,fill="white")
+			time.sleep(1)
 		else :
 			break
-
-
-# Connect to the lms server and set sq handle
-server_connect()
-
-print(sq.get_mode())
 
 
 # OLED images
@@ -310,6 +319,11 @@ sample_size_val = ""
 sample_rate_val = ""
 bitrate_val = ""
 
+
+# Connect to the lms server and set sq handle
+server_connect()
+
+print("Player State: %s" % player_handle.get_mode())
 
 
 try:
@@ -381,6 +395,7 @@ try:
 			volume_val = get_volume()
 		else:
 			volume_val = str(100)
+			vol_val_store = volume_val
 		
 		timer_input -= 1
 		if timer_input == 0 :
@@ -536,11 +551,11 @@ try:
 				with canvas(device) as draw:
 					if is_wifi == False :
 						# Wifi IP Address
-						draw.text((140, 45), ip, font=font_ip, fill="white")
+						draw.text((140, 45), player_ip, font=font_ip, fill="white")
 						draw.text((120, 45), link, font=awesomefont, fill="white")
 					else:
 						# LAN IP Address
-						draw.text((140, 45), ip, font=font_ip, fill="white")
+						draw.text((140, 45), player_ip, font=font_ip, fill="white")
 						draw.text((120, 45), wifi, font=awesomefont, fill="white")
 
 					draw.text((28,-10),time.strftime("%X"), font=font_32,fill="white")
