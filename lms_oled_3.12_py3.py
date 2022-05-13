@@ -33,7 +33,12 @@ import socket
 
 import urllib.parse
 
-import netifaces
+try :
+	import netifaces
+except :
+	print("Required modules are not available.")
+	print("Please check if evosabre-py38-deps.tcz or evosabre-py38-64-deps.tcz extension is loaded.")
+	exit("")
 
 from PIL import Image
 from PIL import ImageFont
