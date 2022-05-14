@@ -132,27 +132,33 @@ def get_lms_ip():
 		print("Discovering LMS IP")
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		sock.bind((player_ip,3483))
 
-		sock.settimeout(2.0)
-
-		sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
 		try:
-			data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
-
+			sock.bind((player_ip,3483))
 		except (socket.error, socket.timeout):
-			print ("	Discovery Failure")
+			print ("	Local LMS Detected")
 			lms_ip = "127.0.0.1"
 			print ("	LMS IP: " + lms_ip)
 			lms_name = ""
 		else:
-			#print ("	Broadcast Response: ", data)
-			lms_name = data.decode('UTF-8')[len("eName")+1:]
-			lms_ip = str(addr[0])
-			print ("	Discovered Server: ", lms_name)
-			print ("	Discovered Server IP: ",lms_ip)
-		finally:
-			sock.close()
+			try:
+				sock.settimeout(2.0)
+				sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
+				data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+
+			except (socket.error, socket.timeout):
+				print ("	Discovery Failure.  Assuming Local LMS")
+				lms_ip = "127.0.0.1"
+				print ("	LMS IP: " + lms_ip)
+				lms_name = ""
+			else:
+				#print ("	Broadcast Response: ", data)
+				lms_name = data.decode('UTF-8')[len("eName")+1:]
+				lms_ip = str(addr[0])
+				print ("	Discovered Server: ", lms_name)
+				print ("	Discovered Server IP: ",lms_ip)
+			finally:
+				sock.close()
 
 	return lms_ip,lms_name
 	
