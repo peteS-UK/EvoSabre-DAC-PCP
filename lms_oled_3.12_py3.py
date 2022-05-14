@@ -19,6 +19,8 @@
 # Loop to reconnect to rebooting LMS server
 # Apr 22
 # Remove redundent SPDIF code and imports
+# May 22
+# Improve discovery handling with local LMS
 
 
 
@@ -55,8 +57,7 @@ from luma.oled.device import ssd1322
 serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
 device = ssd1322(serial, rotate=0, mode="1")
 
-mpd_music_dir		= "/var/lib/mpd/music/"
-title_height		= 40
+title_height	= 40
 scroll_unit		= 2
 oled_width		= 256
 oled_height		= 64
