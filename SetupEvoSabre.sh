@@ -1,4 +1,27 @@
 
+echo "Setup for EvoSabre OLED extension"
+
+#Check if LIRC is installed before proceeding
+while read line; do
+	echo $line | grep -q IR_LIRC
+        if [ $? -eq 0 ]; then
+        	IR_LIRC=$(echo $line)
+        fi
+done < /usr/local/etc/pcp/pcp.cfg
+
+LIRC_installed=$(echo $IR_LIRC | awk -F'IR_LIRC=' '{print $2}' | sed 's/"//g')
+
+if [ $LIRC_installed != "yes" ]; then
+    echo "LIRC is not installed.  If you continue, IR config files won't be installed"
+    while true; do
+    read -p "Do you wish to exit this setup and install LIRC first?" yn
+    case $yn in
+        [Yy]* ) echo "Please install LIRC in PCP Tweaks and re-run this setup"; exit;;
+        [Nn]* ) echo "Continue"; break;;
+        * ) echo "Please answer yes or no.";;
+    esac
+done
+fi
 
 tmp=$(mktemp)
 tmpdir=$(mktemp -d)
@@ -29,9 +52,16 @@ fi
 sudo cp -p "$tmpdir/evosabre/$tczname" /etc/sysconfig/tcedir/optional 1>>/dev/null
 echo "$tczname" | sudo tee -a /etc/sysconfig/tcedir/onboot.lst 1>>/dev/null
 
+
+if [ $LIRC_installed = "yes" ]; then
+    echo "Copying lirc setup files"
+    sudo cp -p $tmpdir/evosabre/.lircrc ~
+    sudo cp -p $tmpdir/evosabre/lircd.conf /usr/local/etc/lirc
+fi 
+
 rm -rf $tmpdir
 
 echo "Backing up PCP"
 #pcp bu  1>>/dev/null
 
-echo "${RED}Extension Installed.  Now reboot using ""pcp rb""${NORMAL}"
+echo "Extension Installed.  Now reboot using ""pcp rb"""
