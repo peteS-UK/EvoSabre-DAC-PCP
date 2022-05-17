@@ -26,6 +26,9 @@ fi
 tmp=$(mktemp)
 tmpdir=$(mktemp -d)
 
+echo "Installing python3 and freetype extension"
+tce-load python3.8 freetype 1>>/dev/null 2>>/dev/null
+
 echo "Downloading Extension from GitHub"
 wget -q https://github.com/peteS-UK/EvoSabre-DAC-PCP/releases/download/EvoSabre/evosabre.tar.gz -O $tmp
 
@@ -62,6 +65,6 @@ fi
 rm -rf $tmpdir
 
 echo "Backing up PCP"
-#pcp bu  1>>/dev/null
+pcp bu  1>>/dev/null
 
 echo "Extension Installed.  Now reboot using ""pcp rb"""
