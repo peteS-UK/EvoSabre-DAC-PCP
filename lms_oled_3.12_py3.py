@@ -128,6 +128,7 @@ def get_player_ip():
 def get_lms_ip():
 	if len(process_params("LMSIP")) > 1 :
 		lms_ip = process_params("LMSIP")
+		lms_name = ""
 	else :
 		#Discover the LMS IP Address
 		print("Discovering LMS IP")
