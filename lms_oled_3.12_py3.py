@@ -28,6 +28,37 @@ import sys
 import importlib
 importlib.reload(sys)
 
+def process_params(item):
+	for params in sys.argv:
+		key = params.split("=")[0]
+		if key.upper() == item:
+			return str(params.split("=")[1])
+	return ""
+
+
+# importing module
+import logging
+ 
+Log_Format = "%(levelname)s %(asctime)s - %(message)s"
+
+# Creating an object
+logger = logging.getLogger()
+ 
+# Setting the threshold of logger to DEBUG
+logger.setLevel(logging.INFO)
+
+# create console handler
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(logging.Formatter(Log_Format))
+logger.addHandler(stream_handler)
+
+if process_params("LOGFILE") == "Y" :
+	# create log file handler
+	logger.info("Outputting to log file")
+	file_handler = logging.FileHandler('evosabre.log', mode='w')
+	file_handler.setFormatter(logging.Formatter(Log_Format))
+	logger.addHandler(file_handler)
+
 
 import os
 import time
@@ -38,8 +69,8 @@ import urllib.parse
 try :
 	import netifaces
 except :
-	print("Required modules are not available.")
-	print("Please check if evosabre-py38-deps.tcz or evosabre-py38-64-deps.tcz extension is loaded.")
+	logger.critical("Required modules are not available.")
+	logger.critical("Please check if evosabre-py38-deps.tcz or evosabre-py38-64-deps.tcz extension is loaded.")
 	exit("")
 
 from PIL import Image
@@ -90,21 +121,15 @@ link			= "\uf0e8"
 
 default_gateway_interface = netifaces.gateways()['default'][netifaces.AF_INET][1]
 
-print ("Default Gateway Interface: " + default_gateway_interface)
+logger.info ("Default Gateway Interface: %s" , default_gateway_interface)
 
 if default_gateway_interface[0:2] == "wl" :
-	print ("WiFi Network Detected")
+	logger.info ("WiFi Network Detected")
 	is_wifi = True
 else :
-	print ("Non WiFi WiFi Network Detected")
+	logger.info ("Non WiFi WiFi Network Detected")
 	is_wifi = False
 
-def process_params(item):
-	for params in sys.argv:
-		key = params.split("=")[0]
-		if key.upper() == item:
-			return str(params.split("=")[1])
-	return ""
 
 def get_player_mac():
 	if len(process_params("MAC")) > 1 :
@@ -112,17 +137,17 @@ def get_player_mac():
 	else :
 		mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
 		if mac != "":
-			print ("Player MAC: " + mac)
+			logger.info ("Player MAC: %s", mac)
 			return mac
 		else :
-			print("MAC Discovery failed.  Using 00:11:22:33:44:55")
+			logger.warning("MAC Discovery failed.  Using 00:11:22:33:44:55")
 			return "00:11:22:33:44:55"
 
 def get_player_ip():
 	get_ip = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_INET][0]['addr']
 	if get_ip == "":
 		get_ip = "127.0.0.1"
-	print ("Player IP: "+ get_ip)
+	logger.info ("Player IP: %s", get_ip)
 	return get_ip
 
 def get_lms_ip():
@@ -131,16 +156,16 @@ def get_lms_ip():
 		lms_name = ""
 	else :
 		#Discover the LMS IP Address
-		print("Discovering LMS IP")
+		logger.info("Discovering LMS IP")
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 		try:
 			sock.bind((player_ip,3483))
 		except (socket.error, socket.timeout):
-			print ("	Local LMS Detected")
+			logger.info ("	Local LMS Detected")
 			lms_ip = "127.0.0.1"
-			print ("	LMS IP: " + lms_ip)
+			logger.info ("	LMS IP: %s",lms_ip)
 			lms_name = ""
 		else:
 			try:
@@ -149,16 +174,16 @@ def get_lms_ip():
 				data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
 
 			except (socket.error, socket.timeout):
-				print ("	Discovery Failure.  Assuming Local LMS")
+				logger.warning ("	Discovery Failure.  Assuming Local LMS")
 				lms_ip = "127.0.0.1"
-				print ("	LMS IP: " + lms_ip)
+				logger.warning ("	LMS IP: %s",lms_ip)
 				lms_name = ""
 			else:
 				#print ("	Broadcast Response: ", data)
 				lms_name = data.decode('UTF-8')[len("eName")+1:]
 				lms_ip = str(addr[0])
-				print ("	Discovered Server: ", lms_name)
-				print ("	Discovered Server IP: ",lms_ip)
+				logger.info ("	Discovered Server: %s", lms_name)
+				logger.info ("	Discovered Server IP: %s",lms_ip)
 			finally:
 				sock.close()
 
@@ -271,15 +296,15 @@ def server_connect():
 			time.sleep(1)
 			server_handle = Server(hostname=lms_ip, port=9090, username="user", password="password", charset='utf8')
 			server_handle.connect()
-			print("LMS Version: %s" % server_handle.get_version())
+			logger.info("LMS Version: %s" , server_handle.get_version())
 
 			global player_handle
 			player_handle = server_handle.get_player(player_mac)
-			print("Player Name: %s" % player_handle.get_name())
+			logger.info("Player Name: %s" , player_handle.get_name())
 			
 		
 		except Exception as e:
-			print("Player " + player_mac + " not connected to LMS : " + lms_ip)
+			logger.info("Player %s not connected to LMS : %s",player_mac,lms_ip)
 
 			with canvas(device) as draw:
 #debug
@@ -336,7 +361,7 @@ bitrate_val = ""
 # Connect to the lms server and set sq handle
 server_connect()
 
-print("Player State: %s" % player_handle.get_mode())
+logger.info("Player State: %s" , player_handle.get_mode())
 
 
 try:
@@ -587,5 +612,5 @@ try:
 except Exception as e:
     exc_type, exc_obj, exc_tb = sys.exc_info()
     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    print((exc_type, fname, exc_tb.tb_lineno))
+    logger.critical((exc_type, fname, exc_tb.tb_lineno))
 
