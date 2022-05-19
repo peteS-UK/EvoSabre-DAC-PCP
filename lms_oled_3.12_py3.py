@@ -460,6 +460,10 @@ try:
 			
 		# Play screen
 		elif info_state != "stop":
+			
+			#reset screen saver counter
+			screen_sleep = 0
+
 			if info_title == "" :
 				name    = info_file.split('/')
 				name.reverse()
