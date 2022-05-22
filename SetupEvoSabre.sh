@@ -12,8 +12,6 @@ while true; do
     esac
 done
 
-exit
-
 #Check if LIRC is installed before proceeding
 while read line; do
 	echo $line | grep -q IR_LIRC
