@@ -78,8 +78,13 @@ echo "$tczname" | sudo tee -a /etc/sysconfig/tcedir/onboot.lst 1>>/dev/null
 
 if [ $LIRC_installed = "yes" ]; then
     echo "Copying lirc setup files"
-    sudo cp -p $tmpdir/evosabre/.lircrc ~
-    sudo cp -p $tmpdir/evosabre/lircd.conf /usr/local/etc/lirc
+    if [ $dac == "E" ]; then
+        sudo cp -p $tmpdir/evosabre/.lircrc ~
+        sudo cp -p $tmpdir/evosabre/lircd.conf /usr/local/etc/lirc
+    else
+        sudo cp -p $tmpdir/evosabre/.lircrc.mini ~/.lircrc
+        sudo cp -p $tmpdir/evosabre/lircd.conf.mini /usr/local/etc/lirc/lircd.conf
+    fi
 fi 
 
 rm -rf $tmpdir
