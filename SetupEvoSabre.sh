@@ -1,5 +1,18 @@
 
-echo "Setup for EvoSabre OLED extension"
+echo ""
+echo "Setup for OLED with LMS on Raspberry Pi"
+echo ""
+
+while true; do
+    read -p "Are you setting up EvoSabre or RASPDac Mini?" er
+    case $er in
+        [E]* ) echo "Setup for EvoSabre OLED extension (E)"; dac="E";break;;
+        [R]* ) echo "Setup for RASPDac Mini OLED extension (R)"; dac="R";break;;
+        * ) echo "Please answer E or R";;
+    esac
+done
+
+exit
 
 #Check if LIRC is installed before proceeding
 while read line; do
@@ -12,6 +25,7 @@ done < /usr/local/etc/pcp/pcp.cfg
 LIRC_installed=$(echo $IR_LIRC | awk -F'IR_LIRC=' '{print $2}' | sed 's/"//g')
 
 if [ $LIRC_installed != "yes" ]; then
+    echo ""
     echo "LIRC is not installed.  If you continue, IR config files won't be installed"
     while true; do
     read -p "Do you wish to exit this setup and install LIRC first?" yn
@@ -38,7 +52,13 @@ tar -xzf $tmp -C $tmpdir
 rm $tmp
 
 echo "Moving Files to home"
-mv -f $tmpdir/evosabre/home/lms_oled_3.12_py3.py ~
+
+if [ $dac == "E" ]; then
+    mv -f $tmpdir/evosabre/home/lms_oled_3.12_py3.py ~
+else
+    mv -f $tmpdir/evosabre/home/lms_oled_mini_py3.py ~
+fi
+
 
 mkdir ~/fonts 2>>/dev/null
 mv -f $tmpdir/evosabre/home/fonts/* ~/fonts
