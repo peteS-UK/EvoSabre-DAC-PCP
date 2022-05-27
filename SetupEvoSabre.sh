@@ -57,6 +57,7 @@ else
     mv -f $tmpdir/evosabre/home/lms_oled_mini_py3.py ~
 fi
 
+mv -f $tmpdir/evosabre/home/logo.bmp ~
 
 mkdir ~/fonts 2>>/dev/null
 mv -f $tmpdir/evosabre/home/fonts/* ~/fonts

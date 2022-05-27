@@ -75,7 +75,7 @@ except :
 
 from PIL import Image
 from PIL import ImageFont
-from PIL import ImageDraw
+# from PIL import ImageDraw
 
 from pylms.server import Server
 
@@ -98,14 +98,14 @@ def make_font(name, size):
         os.path.dirname(__file__), 'fonts', name))
     return ImageFont.truetype(font_path, size)
 
-font_title		= make_font('msyh.ttf', 26)
+# font_title		= make_font('msyh.ttf', 26)
 font_info		= make_font('msyh.ttf', 20)
 font_vol		= make_font('msyh.ttf', 55)
 font_ip			= make_font('msyh.ttf', 15)
 font_time		= make_font('msyh.ttf', 18)
-font_20			= make_font('msyh.ttf', 18)
-font_date		= make_font('arial.ttf', 25)
-font_logo		= make_font('arial.ttf', 42)
+# font_20			= make_font('msyh.ttf', 18)
+# font_date		= make_font('arial.ttf', 25)
+# font_logo		= make_font('arial.ttf', 42)
 font_32			= make_font('arial.ttf', 50)
 awesomefont		= make_font("fontawesome-webfont.ttf", 16)
 awesomefontbig	= make_font("fontawesome-webfont.ttf", 42)
@@ -318,11 +318,11 @@ def server_connect():
 
 
 # OLED images
-image		= Image.new('1', (oled_width, oled_height))
-draw		= ImageDraw.Draw(image)
+# image		= Image.new('1', (oled_width, oled_height))
+# draw		= ImageDraw.Draw(image)
 music_file	=""
 shift		= 0
-title_image     = Image.new('L', (oled_width, title_height))
+# title_image     = Image.new('L', (oled_width, title_height))
 title_offset    = 0
 current_page = 0
 vol_val_store = 0
@@ -333,8 +333,13 @@ screensave = 3
 
 shift		= 1
 
-with canvas(device) as draw:
-	draw.text((6, 0),"Audiophonics", font=font_logo,fill="white")
+with Image.open("logo.bmp").convert("1") as logo:
+    with canvas(device) as draw:
+	    draw.bitmap((0, 0),logo,255)
+
+# with canvas(device) as draw:
+#	draw.text((6, 0),"Audiophonics", font=font_logo,fill="white")
+
 time.sleep(2)
 
 info_file = ""
