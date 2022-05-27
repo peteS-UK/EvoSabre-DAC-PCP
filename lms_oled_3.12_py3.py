@@ -88,6 +88,19 @@ from luma.oled.device import ssd1322
 serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
 device = ssd1322(serial, rotate=0, mode="1")
 
+#Set the contrast
+if len(process_params("CONTRAST")) > 1 :
+	try:
+		contrast = int(process_params("CONTRAST"))
+		if contrast < 0 or contrast > 255 :
+			logger.warn("CONTRAST must be between 0 & 255")
+			
+			contrast = 255
+		logger.info("Setting CONTRAST=%s",contrast)
+		device.contrast(contrast)
+	except:
+		logger.error("Unable to set device CONTRAST")
+
 title_height	= 40
 scroll_unit		= 2
 oled_width		= 256
