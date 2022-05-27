@@ -333,9 +333,13 @@ screensave = 3
 
 shift		= 1
 
-with Image.open("logo.bmp").convert("1") as logo:
+logo_path = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), "logo.bmp"))
+
+with Image.open(logo_path).convert("1") as logo:
     with canvas(device) as draw:
 	    draw.bitmap((0, 0),logo,255)
+
 
 # with canvas(device) as draw:
 #	draw.text((6, 0),"Audiophonics", font=font_logo,fill="white")
