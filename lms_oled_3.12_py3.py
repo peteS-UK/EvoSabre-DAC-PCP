@@ -373,7 +373,7 @@ time_val = time_min = time_sec = volume_val =  0
 volume_val = 0
 
 timer_rates = 10
-timer_input = 10
+# timer_input = 10
 
 sample_size_val = ""
 sample_rate_val = ""
@@ -392,10 +392,10 @@ try:
 		global song_info
 		song_info = get_song_info()
 
-		info_file = get_song_item("title") #sq.request("title ?",1)
-		info_state = get_song_item("mode") #sq.get_mode()
+		info_file = get_song_item("title") 
+		info_state = get_song_item("mode")
 
-# One time update		
+# File or player state has changed	
 		if info_file_store != info_file or info_state_store != info_state:
 			timer_rates = 10
 			info_artist     = get_song_item("artist")
@@ -418,6 +418,9 @@ try:
 				info_duration   = get_duration() #sq.get_track_duration()
 			except :
 				info_duration   = 0
+
+		# *** timer_rates is set to 10.  Why does it do this loop 10 times, 
+		# even if track is the same?
 		if timer_rates > 0 :
 			info_state = get_song_item("mode") #sq.get_mode()
 			sample_size_val = str(get_sample_size())
@@ -439,7 +442,7 @@ try:
 		info_file_store = info_title
 		info_state_store = info_state
 		
-# Continuous update			
+# Updates for whether song info has changed or not.			
 		try :
 			time_val = get_elapsed_time()
 			time_bar = time_val
@@ -457,9 +460,11 @@ try:
 			volume_val = str(100)
 			vol_val_store = volume_val
 		
-		timer_input -= 1
-		if timer_input == 0 :
-			timer_input = 10
+
+		# *** What does this do?
+		#timer_input -= 1
+		#if timer_input == 0 :
+		#	timer_input = 10
 		
 		
 		# Volume change screen.  Only show if it's not fixed volume.

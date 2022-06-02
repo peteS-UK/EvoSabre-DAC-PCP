@@ -52,9 +52,9 @@ rm $tmp
 echo "Moving Files to home"
 
 if [ $dac == "E" ]; then
-    mv -f $tmpdir/evosabre/home/lms_oled_3.12_py3.py ~
+    mv -f $tmpdir/evosabre/home/lms_oled_4.py ~
 else
-    mv -f $tmpdir/evosabre/home/lms_oled_mini_py3.py ~
+    mv -f $tmpdir/evosabre/home/lms_oled_mini_4.py ~
 fi
 
 mv -f $tmpdir/evosabre/home/logo.bmp ~
@@ -65,10 +65,10 @@ mv -f $tmpdir/evosabre/home/fonts/* ~/fonts
 
 if [ "$(uname -m)" = "aarch64" ]; then
     echo "Installing 64 bit extension"
-    tczname="evosabre-py38-64-deps.tcz"
+    tczname="evosabre4-py38-64-deps.tcz"
 else
     echo "Installing 32 bit extension"
-    tczname="evosabre-py38-deps.tcz"
+    tczname="evosabre4-py38-deps.tcz"
 fi
 
 sudo cp -p "$tmpdir/evosabre/$tczname" /etc/sysconfig/tcedir/optional 1>>/dev/null
