@@ -42,7 +42,7 @@ echo "Installing python3 and freetype extension"
 tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
 
 echo "Downloading Extension from GitHub"
-wget -q https://github.com/peteS-UK/EvoSabre-DAC-PCP/releases/download/EvoSabre/evosabre.tar.gz -O $tmp
+wget -q https://github.com/peteS-UK/EvoSabre-DAC-PCP/releases/download/EvoSabreOLED/evosabre.tar.gz -O $tmp
 
 echo "Unpacking Files"
 tar -xzf $tmp -C $tmpdir
