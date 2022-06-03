@@ -85,7 +85,7 @@ from luma.oled.device import ssd1306
 
 #import RPi.GPIO as GPIO
 serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
-device = ssd1306(serial, rotate=2)
+device = ssd1306(serial, rotate=2, mode="1")
 
 title_height		= 40
 scroll_unit		= 2
