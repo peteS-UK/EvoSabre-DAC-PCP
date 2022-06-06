@@ -88,6 +88,26 @@ fi
 
 rm -rf $tmpdir
 
+#Check if USER_COMMAND_1 is set alreadt
+while read line; do
+	echo $line | grep -q USER_COMMAND_1
+        if [ $? -eq 0 ]; then
+        	UC1=$(echo $line)
+        fi
+done < /usr/local/etc/pcp/pcp.cfg
+
+UC_LINE=$(echo $UC1 | awk -F'USER_COMMAND_2=' '{print $2}' | sed 's/"//g')
+
+if [ "$UC_LINE" == "" ]; then
+    # Command line is blank, so update it
+    echo "Updating User Command"
+    if [ $dac == "E" ]; then
+        $(sed -i 's/USER_COMMAND_1=""/USER_COMMAND_1="python3+%2Fhome%2Ftc%2Flms_oled_4.py"/' /usr/local/etc/pcp/pcp.cfg)
+    else
+        $(sed -i 's/USER_COMMAND_1=""/USER_COMMAND_1="python3+%2Fhome%2Ftc%2Flms_oled_mini_4.py"/' /usr/local/etc/pcp/pcp.cfg)
+    fi
+fi
+
 echo "Backing up PCP"
 pcp bu  1>>/dev/null
 

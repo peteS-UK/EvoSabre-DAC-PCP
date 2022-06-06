@@ -32,20 +32,10 @@ import sys
 import importlib
 importlib.reload(sys)
 
-import telnetlib
 import os
 import time
-import socket
+
 import urllib.parse
-
-
-def process_params(item):
-	for params in sys.argv:
-		key = params.split("=")[0]
-		if key.upper() == item:
-			return str(params.split("=")[1])
-	return ""
-
 
 # importing module
 import logging
@@ -53,271 +43,84 @@ import logging
 Log_Format = "%(levelname)s %(asctime)s - %(message)s"
 
 # Creating an object
-logger = logging.getLogger()
+logger = logging.getLogger("oled")
  
 # Setting the threshold of logger
 logger.setLevel(logging.INFO)
+
+# ignore REQUESTS debug messages
+logging.getLogger('REQUESTS').setLevel(logging.ERROR)
+
 
 # create console handler
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter(Log_Format))
 logger.addHandler(stream_handler)
 
-if process_params("LOGFILE") == "Y" :
+try :
+	import requests
+except :
+	logger.critical("Required modules are not available.")
+	logger.critical("Please check if oled extension is loaded.")
+	exit("")
+
+from PIL import Image
+
+
+from luma.core.interface.serial import spi
+from luma.core.render import canvas
+from luma.core.image_composition import ImageComposition, ComposableImage
+
+import helper
+
+
+if helper.process_params("LOGFILE") == "Y" :
 	# create log file handler
 	logger.info("Outputting to log file")
 	file_handler = logging.FileHandler('evosabre.log', mode='w')
 	file_handler.setFormatter(logging.Formatter(Log_Format))
 	logger.addHandler(file_handler)
 
-
-class LMSTelnetServer(object):
-
-	"""
-	Server
-	"""
-
-	def __init__(self, 
-		hostname="localhost",
-		port=9090,username="", 
-		password="",
-		charset="utf8"):
-
-		"""
-		Constructor
-		"""
-		self.debug = False
-		self.logger = None
-		self.telnet = None
-		self.logged_in = False
-		self.hostname = hostname
-		self.port = port
-		self.username = username
-		self.password = password
-		self.version = ""
-		self.player_count = 0
-		self.players = []
-		self.charset = charset
-	
-	def connect(self, update=True):
-		"""
-		Connect
-		"""
-		self.telnet_connect()
-		self.login()
-		#self.get_players(update=update)
-	
-	def telnet_connect(self):
-		"""
-		Telnet Connect
-		"""
-		self.telnet = telnetlib.Telnet(self.hostname, self.port)
-
-	def disconnect(self):
-		self.telnet.close()
-	
-	def login(self):
-		"""
-		Login
-		"""
-		result = self.request("login %s %s" % (self.username, self.password))
-		self.logged_in = (result == "******")
-	
-	def request(self, command_string, preserve_encoding=False):
-		"""
-		Request
-		"""
-		# self.logger.debug("Telnet: %s" % (command_string))
-		self.telnet.write(self.__encode(command_string + "\n"))
-		response = self.__decode(self.telnet.read_until(self.__encode("\n"))[:-1])
-		if command_string == "subscribe mixer" :
-			print(response)
-		if not preserve_encoding:
-			response = self.__unquote(response)
-		else:
-			command_string_quoted = command_string[0:command_string.find(':')] + command_string[command_string.find(':'):].replace(':',self.__quote(':'))
-		if not preserve_encoding:
-			if response[:9] != "subscribe" :
-				result = response[len(command_string)-1:]
-			else :
-				result = response
-		else:
-			result = response[len(command_string_quoted)-1:]
-				
-		result = result.strip()
-		return result
-
-	def read(self, preserve_encoding=False):
-		"""
-		Read
-		"""
-		# self.logger.debug("Telnet: %s" % (command_string))
-	
-		response = self.__decode(self.telnet.read_until(b"\n",0.1))
-
-		if not preserve_encoding:
-			response = self.__unquote(response)
-
-		result = response.strip()
-		return result
-	
-	
-	def __encode(self, text):
-		return text.encode(self.charset)
-	
-	def __decode(self, bytes):
-		return bytes.decode(self.charset)
-	
-	def __quote(self, text):
-		try:
-			import urllib.parse
-			return urllib.parse.quote(text, encoding=self.charset)
-		except ImportError:
-			import urllib
-			return urllib.quote(text)
-
-	def __unquote(self, text):
-		try:
-			import urllib.parse
-			return urllib.parse.unquote(text, encoding=self.charset)
-		except ImportError:
-			import urllib
-			return urllib.unquote(text)
-
-
-class Display:
-	type=""
-	logo_xy = (0,0)
-	connecting_line1_xy = (0,0)
-	connecting_line2_xy = (0,0)
-	connecting_line3_xy = (0,0)
-	vol_screen_line1_xy = (0,0)
-	vol_screen_line1_y = 0
-	vol_bar_start = 0
-	vol_screen_rect = (0,0,0,0)
-	vol_screeen_factor = 0.0
-	title_line1_y = 0
-	title_line2_y = 0
-	artist_line1_y = 0
-	artist_line2_y = 0
-	pause_xy = (0, 0)
-	title_line3_time_xy = (0, 0)
-	title_line3_duration_xy = (0,0)
-	title_line3_volume_icon_xy = (0,0)
-	title_line3_volume_val_xy = (0,0)
-	title_timebar = (0,0,0,0)
-	time_ip_logo_xy = (0,0)
-	time_ip_val_xy = (0,0)
-	time_xy = (0,0)
-	time_vol_icon_xy = (0,0)
-	time_vol_val_xy = (0, 0)
-	screensaver_y = 0
-	scroll_unit = 0
-	oled_width = 0
-	oled_height = 0
-
-display = Display()
+display = helper.Display()
 
 oled = "ssd1322"
 
-if oled == "ssd1322":
-	display.type="ssd1322"
-	display.logo_xy = (6, 0)
-	display.connecting_line1_xy = (15, 0)
-	display.connecting_line2_xy = (20, 17)
-	display.connecting_line3_xy = (20, 34)
-	display.vol_screen_line1_xy = (5, 5)
-	display.vol_screen_line1_y = 5
-	display.vol_bar_start = 0
-	display.vol_screen_rect = (0,53,255,60)
-	display.vol_screeen_factor = 2.52
-	display.title_line1_y = -7
-	display.title_line2_y = 20
-	display.artist_line1_y = -7
-	display.artist_line2_y = 14
-	display.pause_xy = (0, 43)
-	display.title_line3_time_xy = (0, 41)
-	display.title_line3_duration_xy = (55, 41)
-	display.title_line3_volume_icon_xy = (200, 44)
-	display.title_line3_volume_val_xy = (220, 41)
-	display.title_timebar = (0,40,0,44)
-	display.time_ip_logo_xy = (120, 45)
-	display.time_ip_val_xy = (140, 45)
-	display.time_xy = (28,-10)
-	display.time_vol_icon_xy = (1, 43)
-	display.time_vol_val_xy = (20, 40)
-	display.screensaver_y = 45
-	display.scroll_unit = 2
-	display.oled_width = 256
-	display.oled_height = 64
+#Load config values
+config = helper.read_config()
 
-if oled == "ssd1306":
-	display.type="ssd1306"
-	display.logo_xy = (6, 0)
-	display.connecting_line1_xy = (15, 0)
-	display.connecting_line2_xy = (20, 22)
-	display.connecting_line3_xy = (20, 44)
-	display.vol_screen_line1_xy = (0, 25)
-	display.vol_screen_line1_y = -10
-	display.vol_screen_rect = (120,0,127,62)
-	display.vol_bar_start = 58
-	display.vol_screeen_factor = 0.5602
-	display.title_line1_y = 0
-	display.title_line2_y = 25
-	display.artist_line1_y = 0
-	display.artist_line2_y = 20
-	display.pause_xy = (0, 52)
-	display.title_line3_time_xy = (1, 48)
-	display.title_line3_duration_xy = (55, 48)
-	display.title_line3_volume_icon_xy = (85, 51)
-	display.title_line3_volume_val_xy = (101, 48)
-	display.title_timebar = (0,45,0,47)
-	display.time_ip_logo_xy = (1, 32)
-	display.time_ip_val_xy = (18, 29)
-	display.time_xy = (2, -6)
-	display.time_vol_icon_xy = (2, 51)
-	display.time_vol_val_xy = (19, 48)
-	display.screensaver_y = 45
-	display.scroll_unit = 2
-	display.oled_width = 128
-	display.oled_height = 64
+display.type=config[oled]['type']
+display.logo_xy = helper.parse_int_tuple(config[oled]['logo_xy'])
+display.vol_screen_line1_xy = helper.parse_int_tuple(config[oled]['vol_screen_line1_xy'])
+display.vol_screen_line2_y = int(config[oled]['vol_screen_line2_y'])
+display.vol_bar_start = int(config[oled]['vol_bar_start'])
+display.vol_screen_rect = helper.parse_int_tuple(config[oled]['vol_screen_rect'])
+display.vol_screeen_factor = float(config[oled]['vol_screeen_factor'])
+display.title_artist_line1_y = int(config[oled]['title_artist_line1_y'])
+display.title_artist_line2_y = int(config[oled]['title_artist_line2_y'])
+display.pause_xy = helper.parse_int_tuple(config[oled]['pause_xy'])
+display.title_line3_time_xy = helper.parse_int_tuple(config[oled]['title_line3_time_xy'])
+display.title_line3_duration_xy = helper.parse_int_tuple(config[oled]['title_line3_duration_xy'])
+display.title_line3_volume_icon_xy = helper.parse_int_tuple(config[oled]['title_line3_volume_icon_xy'])
+display.title_line3_volume_val_xy = helper.parse_int_tuple(config[oled]['title_line3_volume_val_xy'])
+display.title_timebar = helper.parse_int_tuple(config[oled]['title_timebar'])
+display.time_ip_logo_xy = helper.parse_int_tuple(config[oled]['time_ip_logo_xy'])
+display.time_ip_val_xy = helper.parse_int_tuple(config[oled]['time_ip_val_xy'])
+display.time_xy = helper.parse_int_tuple(config[oled]['time_xy'])
+display.time_vol_icon_xy = helper.parse_int_tuple(config[oled]['time_vol_icon_xy'])
+display.time_vol_val_xy = helper.parse_int_tuple(config[oled]['time_vol_val_xy'])
+display.scroll_speed = int(config[oled]['scroll_speed'])
+display.spi_params = config[oled]['spi_params']
 
-class SongData:
-	file_type=""
-	fixed_volume=False
-	sample_size = ""
-	sample_rate = ""
-	bitrate = ""
-	duration = 0
-	elapsed_time = 0
-	volume = ""
-	artist = ""
-	title = ""
-	mode = ""
-	album = ""
-	remote_title = ""
-
-song_data = SongData()
-
-try :
-	import netifaces
-	import requests
-except :
-	logger.critical("Required modules are not available.")
-	logger.critical("Please check if evosabre-py38-deps.tcz or evosabre-py38-64-deps.tcz extension is loaded.")
-	exit("")
-
-from PIL import Image
-from PIL import ImageFont
-
-from luma.core.interface.serial import spi
-from luma.core.render import canvas
+song_data = helper.SongData()
 
 if display.type == "ssd1322" :
 	from luma.oled.device import ssd1322
 	# OLED Device
 	serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
+	# serial = spi(display.spi_params.split(","))
+	
 	device = ssd1322(serial, rotate=0, mode="1")
+
 
 elif display.type == "ssd1306" :
 	from luma.oled.device import ssd1306
@@ -325,11 +128,14 @@ elif display.type == "ssd1306" :
 	serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
 	device = ssd1306(serial, rotate=2)
 
+logger.info("Device Dimensions : %s*%s", device.width, device.height)
+display.height=device.height
+display.width=device.width
 
 #Set the contrast
-if len(process_params("CONTRAST")) > 1 :
+if len(helper.process_params("CONTRAST")) > 1 :
 	try:
-		contrast = int(process_params("CONTRAST"))
+		contrast = int(helper.process_params("CONTRAST"))
 		if contrast < 0 or contrast > 255 :
 			logger.warn("CONTRAST must be between 0 & 255")
 			
@@ -340,34 +146,24 @@ if len(process_params("CONTRAST")) > 1 :
 		logger.error("Unable to set device CONTRAST")
 
 
-def make_font(name, size):
-	font_path = os.path.abspath(os.path.join(
-	os.path.dirname(__file__), 'fonts', name))
-	return ImageFont.truetype(font_path, size)
+font_info		= helper.make_font('msyh.ttf', 20)
+font_vol		= helper.make_font('msyh.ttf', 55)
+font_ip			= helper.make_font('msyh.ttf', 15)
+font_time		= helper.make_font('msyh.ttf', 18)
+font_logo		= helper.make_font('arial.ttf', 42)
+font_32			= helper.make_font('arial.ttf', 50)
+awesomefont		= helper.make_font("fontawesome-webfont.ttf", 16)
+awesomefontbig	= helper.make_font("fontawesome-webfont.ttf", 42)
+# font_debug			= make_font('msyh.ttf', 10)
 
-# font_title		= make_font('msyh.ttf', 26)
-font_info		= make_font('msyh.ttf', 20)
-font_vol		= make_font('msyh.ttf', 55)
-font_ip			= make_font('msyh.ttf', 15)
-font_time		= make_font('msyh.ttf', 18)
-# font_20			= make_font('msyh.ttf', 18)
-# font_date		= make_font('arial.ttf', 25)
-font_logo		= make_font('arial.ttf', 42)
-font_32			= make_font('arial.ttf', 50)
-awesomefont		= make_font("fontawesome-webfont.ttf", 16)
-awesomefontbig	= make_font("fontawesome-webfont.ttf", 42)
-
-# debug
-font_debug			= make_font('msyh.ttf', 10)
-
-# speaker			= "\uf028"
-wifi			= "\uf1eb"
-link			= "\uf0e8"
+wifi_logo			= "\uf1eb"
+link_logo			= "\uf0e8"
+volume_logo 		= "\uf028"
 #clock			= "\uf017"
 
 
 
-default_gateway_interface = netifaces.gateways()['default'][netifaces.AF_INET][1]
+default_gateway_interface = helper.get_default_gateway_inteface()
 
 logger.info ("Default Gateway Interface: %s" , default_gateway_interface)
 
@@ -379,63 +175,6 @@ else :
 	is_wifi = False
 
 
-def get_player_mac():
-	if len(process_params("MAC")) > 1 :
-		return process_params("MAC")
-	else :
-		mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
-		if mac != "":
-			logger.info ("Player MAC: %s", mac)
-			return mac
-		else :
-			logger.warning("MAC Discovery failed.  Using 00:11:22:33:44:55")
-			return "00:11:22:33:44:55"
-
-def get_player_ip():
-	get_ip = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_INET][0]['addr']
-	if get_ip == "":
-		get_ip = "127.0.0.1"
-	logger.info ("Player IP: %s", get_ip)
-	return get_ip
-
-def get_lms_ip():
-	if len(process_params("LMSIP")) > 1 :
-		lms_ip = process_params("LMSIP")
-		lms_name = ""
-	else :
-		#Discover the LMS IP Address
-		logger.info("Discovering LMS IP")
-		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-		try:
-			sock.bind((player_ip,3483))
-		except (socket.error, socket.timeout):
-			logger.info ("	Local LMS Detected")
-			lms_ip = "127.0.0.1"
-			logger.info ("	LMS IP: %s",lms_ip)
-			lms_name = ""
-		else:
-			try:
-				sock.settimeout(2.0)
-				sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
-				data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
-
-			except (socket.error, socket.timeout):
-				logger.warning ("	Discovery Failure.  Assuming Local LMS")
-				lms_ip = "127.0.0.1"
-				logger.warning ("	LMS IP: %s",lms_ip)
-				lms_name = ""
-			else:
-				logger.debug("	Broadcast Response: %s", data)
-				lms_name = data.decode('UTF-8')[len("eName")+1:]
-				lms_ip = str(addr[0])
-				logger.info ("	Discovered Server: %s", lms_name)
-				logger.info ("	Discovered Server IP: %s",lms_ip)
-			finally:
-				sock.close()
-
-	return lms_ip,lms_name
 
 def decode_metadata(json):
 	
@@ -468,6 +207,20 @@ def decode_metadata(json):
 	except:
 		song_data.sample_size = ""
 
+	try:
+		sample_rate = json['playlist_loop'][0]['samplerate']
+		if sample_rate != "":
+			sample_rate = str(float(sample_rate)/1000)+"k"
+		if sample_rate == "176.4k" :
+			sample_rate = "DSD64"
+		elif sample_rate == "352.8k" :
+			sample_rate = "DSD128"
+		elif sample_rate == "705.6k" :
+			sample_rate = "DSD256"
+	except:
+		sample_rate = ""
+	song_data.sample_rate = sample_rate
+
 	if json['playlist_loop'][0]['bitrate'] != "":
 		song_data.bitrate = str(json['playlist_loop'][0]['bitrate'])
 	else :
@@ -478,8 +231,6 @@ def decode_metadata(json):
 	else :
 		song_data.duration = 0
 
-
-
 	song_data.mode = json['mode']
 	song_data.artist = json['playlist_loop'][0]['artist']
 	song_data.title = json['playlist_loop'][0]['title']
@@ -489,7 +240,7 @@ def decode_metadata(json):
 def get_metadata():
 	while True:
 		try:
-			status = lms_request(player_mac,'"status", "-", 1, "tags:galdIrTNo"')
+			status = helper.lms_request(lms_ip, player_mac,'"status", "-", 1, "tags:galdIrTNo"')
 			#logger.debug("Metadata Status : %s", status)
 			
 		except:
@@ -498,17 +249,7 @@ def get_metadata():
 			break
 	decode_metadata(status)
 
-def lms_request(playermac,params,field=""):
-	data = '{ "id": 1, "method": "slim.request", "params": ["' + playermac + '", [' + params + ']]}'
-	logging.debug("data is %s", data)
-	if len(field) > 0 :
-		response = requests.post("http://"+lms_ip+":9000/jsonrpc.js",data=data).json()['result'][field]
-	else :
-		response = requests.post("http://"+lms_ip+":9000/jsonrpc.js",data=data).json()['result']
-
-	return response
-
-
+	
 def server_connect():
 	while True :
 		try :
@@ -517,28 +258,29 @@ def server_connect():
 			global player_mac
 			global lms_ip
 
-			player_ip = get_player_ip()
+			player_ip = helper.get_player_ip(default_gateway_interface)
 
-			lms_ip, lms_name = get_lms_ip()
-			player_mac = str(get_player_mac())
+			lms_ip, lms_name = helper.get_lms_ip(player_ip)
+			player_mac = str(helper.get_player_mac(default_gateway_interface))
 			
 			with canvas(device) as draw:
-				draw.text(display.connecting_line1_xy,"Connecting to LMS", font=font_time,fill="white")
+				connecting_text = "Connecting to LMS\n"
 				if len(lms_name) > 0 :
-					draw.text(display.connecting_line2_xy,"LMS Name: " + lms_name, font=font_time,fill="white")
-				draw.text(display.connecting_line3_xy,"LMS IP:  " + lms_ip, font=font_time,fill="white")
+					connecting_text += "LMS Name:" + lms_name + "\n"				
+				connecting_text += "LMS IP:" + lms_ip
+				helper.draw_multiline_text_centered(draw,connecting_text,font_time, display)
 			time.sleep(1)
 
 			# Handle for subscription
 			global subscription_server_handle
-			subscription_server_handle = LMSTelnetServer(hostname=lms_ip, port=9090, username="user", password="password", charset='utf8')
+			subscription_server_handle = helper.LMSTelnetServer(hostname=lms_ip, port=9090, username="user", password="password", charset='utf8')
 			subscription_server_handle.connect()
 			subscription_server_handle.request("subscribe power,pause,play,mode")
 
 			logger.info("Subscription Connection Created")
 
-			logger.info("LMS Version: %s" , lms_request("",'"version", "?"',"_version"))
-			logger.info("Player Name: %s" , lms_request(player_mac,'"name", "?"',"_value"))
+			logger.info("LMS Version: %s" , helper.lms_request(lms_ip,"",'"version", "?"',"_version"))
+			logger.info("Player Name: %s" , helper.lms_request(lms_ip, player_mac,'"name", "?"',"_value"))
 		
 		except Exception as e:
 			logger.info("Player %s not connected to LMS : %s",player_mac,lms_ip)
@@ -578,35 +320,32 @@ else:
 
 time.sleep(2)
 
-music_file	=""
-
 title_offset	= 0
 current_page = 0
 vol_val_store = 0
 screen_sleep = 0
 timer_vol = 0
-screensave = 3
 
-info_file = ""
-info_file_store = ""
+screensave_xy = (3,0)
+
+info_title_store = ""
 info_state_store = ""
 info_artist = ""
 info_album = ""
 info_title = ""
 info_name = ""
 info_state = ""
+screensave_chars = ("\\","|","/","-","\\","|","/","-","\\","|")
+screensave_height = font_ip.getsize("".join(screensave_chars))[1]
 
 info_duration = 0
 time_val = time_min = time_sec = volume_val =  0
 volume_val = 0
 
-timer_rates = 10
-timer_input = 10
-
-sample_size_val = ""
-sample_rate_val = ""
 bitrate_val = ""
 
+#Height difference between ip and info fonts to move bitrate line down
+bitrate_line2_adjustment = font_info.getsize("A")[1]-font_ip.getsize("A")[1]
 
 # Connect to the lms server and set sq handle
 server_connect()
@@ -614,12 +353,41 @@ server_connect()
 # Populdate Metadata once
 get_metadata()
 
-info_file = song_data.title
+info_title = song_data.title
 info_state = song_data.mode
 
 logger.info("Player State: %s" , song_data.mode)
 
 lastrun_time = 0
+
+
+
+# Create the static screen compositions
+ip_screen_composition = ImageComposition(device)
+play_screen_composition = ImageComposition(device)
+
+
+if is_wifi == False :
+	# LAN IP Address
+	network_logo = link_logo
+else:
+	# Wifi IP Address
+	network_logo = wifi_logo
+
+ip_screen_composition.add_image(
+	ComposableImage(helper.TextImage(device, network_logo, font=awesomefont).image, 
+	position=display.time_ip_logo_xy))
+ip_screen_composition.add_image(
+	ComposableImage(helper.TextImage(device, player_ip, font=font_ip).image, 
+	position=display.time_ip_val_xy))
+if song_data.fixed_volume == False :
+	ip_screen_composition.add_image(
+		ComposableImage(helper.TextImage(device, volume_logo, font=awesomefont).image, 
+		position=display.time_vol_icon_xy))
+	play_screen_composition.add_image(
+		ComposableImage(helper.TextImage(device, volume_logo, font=awesomefont).image, 
+		position=display.title_line3_volume_icon_xy))
+
 
 try:
 	while True:
@@ -630,10 +398,10 @@ try:
 		except:
 			try:
 				subscription_server_handle.disconnect()
-				logging.info("Subscription Failed, reconnecting")
+				logger.info("Subscription Failed, reconnecting")
 			except:
 				# Subscription has failed - reconnect
-				logging.info("Subscription Failed, reconnecting")
+				logger.info("Subscription Failed, reconnecting")
 			server_connect()
 
 		if len(subscription_event) > 0 and subscription_event[0:len(player_mac)] == player_mac:
@@ -650,13 +418,16 @@ try:
 			get_metadata()
 			lastrun_time = int(time.time() * 1000)
 		
-		info_file = song_data.title
+		info_title = song_data.title
 		info_state = song_data.mode
 
+		synchroniser = helper.Synchroniser()
 
 		# One time update		
-		if info_file_store != info_file or info_state_store != info_state:
-			timer_rates = 10
+		if info_title_store != info_title or info_state_store != info_state:
+
+			# Current file or state is different to last loop
+
 			info_artist	 = song_data.artist
 			if info_artist == "" :
 				info_artist	 = "No Artist"
@@ -673,32 +444,52 @@ try:
 
 			info_title	  = song_data.title
 
+			try:
+				del scroll_play_line_1
+
+			except:
+				logger.debug("Removal Failed")
+			ci_play_line_1 = ComposableImage(helper.TextImage(device, info_title, font=font_info).image, 
+					position=(0,display.title_artist_line1_y))
+			scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
+
 			try :
 				info_duration   = song_data.duration 
 			except :
 				info_duration   = 0
-
-		if timer_rates > 0 :
-			info_state = song_data.mode
-			sample_size_val = str(song_data.sample_size)
-			sample_rate_val = str(song_data.sample_rate)
-			filetype_val = str(song_data.file_type)
-
-			if sample_rate_val == "176.4k" :
-				sample_rate_val = "DSD64"
-			elif sample_rate_val == "352.8k" :
-				sample_rate_val = "DSD128"
-			elif sample_rate_val == "705.6k" :
-				sample_rate_val = "DSD256"
 			
-			if sample_rate_val != "" :
+			if song_data.sample_rate != "" :
 				bitrate_val = " / " + str(song_data.bitrate)
 			else :
 				bitrate_val = str(song_data.bitrate)
 
-			timer_rates -= 1
+			bitrate_width, char = font_ip.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
+			
+			x_bitrate_pos = int((display.width - bitrate_width) / 2)
+			if x_bitrate_pos < 0 :
+				x_bitrate_pos = 0
+			
+			try:
+				del scroll_play_line_2
+			except:
+				logger.debug("No bitrate to remove")
 
-		info_file_store = info_title
+			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_ip).image, 
+					position=(x_bitrate_pos, display.title_artist_line2_y + bitrate_line2_adjustment))
+			
+			scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
+
+			# Song duration
+			if info_duration != 0 :
+				dura_min = info_duration/60
+				dura_sec = info_duration%60
+				dura_min = "%2d" %dura_min
+				dura_sec = "%02d" %dura_sec
+				dura_val = "/ " + str(dura_min)+":"+str(dura_sec)
+			else : 
+				dura_val = ""
+
+		info_title_store = info_title
 		info_state_store = info_state
 		
 # Continuous update			
@@ -718,20 +509,16 @@ try:
 		else:
 			volume_val = str(100)
 			vol_val_store = volume_val
-		
-		timer_input -= 1
-		if timer_input == 0 :
-			timer_input = 10
-		
+			
 		
 		# Volume change screen.  Only show if it's not fixed volume.
 		if volume_val != vol_val_store : timer_vol = 20
 		if timer_vol > 0 :
 			with canvas(device) as draw:
 				vol_width, char = font_vol.getsize(volume_val)
-				x_vol = ((display.oled_width - vol_width) / 2)
+				x_vol = ((display.width - vol_width) / 2)
 				# Volume Display
-				draw.text(display.vol_screen_line1_xy, text="\uf028", font=awesomefontbig, fill="white")
+				draw.text(display.vol_screen_line1_xy, volume_logo, font=awesomefontbig, fill="white")
 				draw.text((x_vol, display.vol_screen_line2_y), volume_val, font=font_vol, fill="white")
 				# Volume Bar
 				draw.rectangle(display.vol_screen_rect, outline=1, fill=0)
@@ -751,106 +538,62 @@ try:
 			#reset screen saver counter
 			screen_sleep = 0
 
-			if info_title == "" :
-				name	= info_file.split('/')
-				name.reverse()
-				info_title  = name[0]
-				try:
-					info_album  = name[1]
-				except:
-					info_album  = ""
-				try:
-					info_artist = name[2]
-				except:
-					info_artist = ""
-			#if info_name != "" : info_artist = info_name
-
 			if info_duration != 0 :
-				time_bar = time_bar / info_duration * display.oled_width
+				time_bar = time_bar / info_duration * display.width
 
-			if info_file != music_file or time_bar < 5 :
-				#Called one time / file
-				music_file  = info_file
-				# Generate title image
-	
-				#if title_width < artist_width:
-				#	title_width = artist_width
-				if info_duration != 0 :
-					dura_min = info_duration/60
-					dura_sec = info_duration%60
-					dura_min = "%2d" %dura_min
-					dura_sec = "%02d" %dura_sec
-					dura_val = "/ " + str(dura_min)+":"+str(dura_sec)
-				else : 
-					dura_val = ""
+			if time_bar < 5 :
+				current_page = 0
+
+			# Switch over the lines after 150 cycles
+
+			if current_page == 150 :
+				#Swap to artist & album
+				try:
+					del scroll_play_line_1
+					del scroll_play_line_2
+				except:
+					logger.debug("No Image to remove")
+
+				ci_play_line_1 = ComposableImage(helper.TextImage(device, info_artist
+					, font=font_info).image, 
+					position=(0, display.title_artist_line1_y))
 				
-				artist_offset	= 10
-				album_offset	= 10
-				title_offset	 = 10
-				title_width, char  = font_info.getsize(info_title)
-				artist_width, char  = font_info.getsize(info_artist)
-				album_width, char  = font_info.getsize(info_album)
-				bitrate_width, char = font_ip.getsize(sample_rate_val + sample_size_val + bitrate_val + " " + filetype_val)
+				ci_play_line_2 = ComposableImage(helper.TextImage(device, info_album
+					, font=font_info).image, 
+					position=(0, display.title_artist_line2_y))	
+
+				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
+				scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
+
+			if current_page == 300 :
+				#Swap to title & bitrate
+				try:
+					del scroll_play_line_1
+					del scroll_play_line_2
+				except:
+					logger.debug("No Image to remove")
+
+				ci_play_line_1 = ComposableImage(helper.TextImage(device, info_title
+					, font=font_info).image, 
+					position=(0, display.title_artist_line1_y))
+					
+				ci_play_line_2 = ComposableImage(helper.TextImage(device, 
+					song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, 
+					font=font_ip).image, 
+					position=(x_bitrate_pos, display.title_artist_line2_y) + bitrate_line2_adjustment)
+								
+				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
+				scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
 
 				current_page = 0
 
-			# OFFSETS*****************************************************
-			x_artist   = 0
-			if display.oled_width < artist_width :
-				if artist_width < -(artist_offset + 20) :
-					artist_offset	= 0
-				if artist_offset < 0 :
-					x_artist   = artist_offset
-				artist_offset	= artist_offset - display.scroll_unit
+			scroll_play_line_1.tick()
+			scroll_play_line_2.tick()
+			current_page += 1
 
-			x_album   = 0
-			if display.oled_width < album_width :
-				if album_width < -(album_offset + 20) :
-					album_offset	= 0
-				if album_offset < 0 :
-					x_album   = album_offset
-				album_offset	= album_offset - display.scroll_unit	
+			with canvas(device, background=play_screen_composition()) as draw:
 
-			x_title   = 0
-			if display.oled_width < title_width :
-				if title_width < -(title_offset + 20) :
-					title_offset	= 0
-				if title_offset < 0 :
-					x_title   = title_offset
-				title_offset	= title_offset - display.scroll_unit	
-
-			x_bitrate = (display.oled_width - bitrate_width) / 2
-
-			if x_bitrate < 0 :
-				x_bitrate = 0
-						
-			with canvas(device) as draw:
-				# Title text
-				if current_page < 150 :	
-					draw.text((x_title, display.title_line1_y), info_title, font=font_info, fill="white")
-					if title_width < -(title_offset - display.oled_width) and title_width > display.oled_width :
-						draw.text((x_title + title_width + 10, display.title_line1_y), "- " + info_title, font=font_info, fill="white")					
-					draw.text((x_bitrate, display.title_line2_y), (sample_size_val + sample_rate_val + bitrate_val + " " + filetype_val), font=font_ip, fill="white")					
-				
-					current_page = current_page + 1
-					artist_offset = 10
-					album_offset = 10						
-		
-				elif current_page < 300	:
-					# artist name
-					draw.text((x_artist,display.artist_line1_y), info_artist, font=font_info, fill="white")
-					if artist_width < -(artist_offset - display.oled_width) and artist_width > display.oled_width :
-						draw.text((x_artist + artist_width + 10,display.artist_line1_y), "- " + info_artist, font=font_info, fill="white")
-					# album name
-					draw.text((x_album, display.artist_line2_y), info_album, font=font_info, fill="white")
-					if album_width < -(album_offset - display.oled_width) and album_width > display.oled_width :
-						draw.text((x_album + album_width + 10,display.artist_line2_y), "- " + info_album, font=font_info, fill="white")
-
-					current_page = current_page + 1
-					
-					if current_page == 300 :
-						current_page = 0
-						title_offset = 10
+				play_screen_composition.refresh()
 
 				# Bottom line
 				if info_state == "pause": 
@@ -865,36 +608,45 @@ try:
 					display.title_timebar[3]), outline=0, fill=1)
 
 				if song_data.fixed_volume == False :
-					draw.text(display.title_line3_volume_icon_xy, text="\uf028", font=awesomefont, fill="white")
 					draw.text(display.title_line3_volume_val_xy, volume_val, font=font_time, fill="white")
 
 			time.sleep(0.05)
 
 		else:
 			# Time IP screen
-			if screen_sleep < 20000 :
-				with canvas(device) as draw:
-					if is_wifi == False :
-						# LAN IP Address
-						network_logo = link
-					else:
-						# Wifi IP Address
-						network_logo = wifi
+			if screen_sleep < 5000 :
+				with canvas(device, background=ip_screen_composition()) as draw:
 
-					draw.text(display.time_ip_logo_xy, network_logo, font=awesomefont, fill="white")
-					draw.text(display.time_ip_val_xy, player_ip, font=font_ip, fill="white")
+					ip_screen_composition.refresh()
 
 					draw.text(display.time_xy,time.strftime("%X"), font=font_32,fill="white")
 					if song_data.fixed_volume == False :
 						draw.text(display.time_vol_val_xy, volume_val, font=font_time, fill="white")
-						draw.text(display.time_vol_icon_xy, text="\uf028", font=awesomefont, fill="white")
 				screen_sleep = screen_sleep + 1
 			else :
 				with canvas(device) as draw:
-					screensave += 2
-					if screensave > 120 : 
-						screensave = 3
-					draw.text((screensave, display.screensaver_y), ".", font=font_time, fill="white")
+					if screen_sleep == 5000:
+						# Start screensave on a random char
+						screensave_char_index = int(helper.get_digit(time.time(),0))
+						try:
+							if int(display.height/screensave_char_index) <= display.height - screensave_height:
+								screensave_xy = (screensave_xy[0],int(display.height/screensave_char_index))
+							else:
+								screensave_xy = (screensave_xy[0],int(display.height - screensave_height))
+						except:
+								screensave_xy = (screensave_xy[0],0)
+						screen_sleep += 1
+					screensave_xy = (screensave_xy[0]+2,screensave_xy[1])
+					if screensave_xy[0] >= display.width -1 : 
+						screensave_xy = (3,screensave_xy[1]+1)
+						
+					if screensave_xy[1] >= display.height - screensave_height :
+						screensave_xy = (screensave_xy[0],0)
+
+					draw.text(screensave_xy, screensave_chars[screensave_char_index], font=font_ip, fill="white")
+					screensave_char_index += 1
+					if screensave_char_index >= 8:
+						screensave_char_index =0
 				time.sleep(1)							
 			time.sleep(0.1)
 except Exception as e:
