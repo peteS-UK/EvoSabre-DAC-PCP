@@ -25,6 +25,8 @@
 # Change to using jsonrpc for polling
 # Restrict polling when LMS is off
 # Switch to subscription for mode and power change vs. constant polling
+# Read from config file for oled setup
+# Change to composed images and updating scrolling design
 
 
 
@@ -36,12 +38,12 @@ import os
 import time
 
 import urllib.parse
+import json
 
-# importing module
 import logging
  
-Log_Format = "%(levelname)s %(asctime)s - %(message)s"
-
+#Log_Format = "%(levelname)s %(asctime)s - %(message)s"
+Log_Format = "%(levelname)s	%(message)s"
 # Creating an object
 logger = logging.getLogger("oled")
  
@@ -51,11 +53,14 @@ logger.setLevel(logging.INFO)
 # ignore REQUESTS debug messages
 logging.getLogger('REQUESTS').setLevel(logging.ERROR)
 
-
 # create console handler
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter(Log_Format))
 logger.addHandler(stream_handler)
+
+
+logger.info("PCP OLED Starting")
+
 
 try :
 	import requests
@@ -66,13 +71,11 @@ except :
 
 from PIL import Image
 
-
 from luma.core.interface.serial import spi
 from luma.core.render import canvas
 from luma.core.image_composition import ImageComposition, ComposableImage
 
 import helper
-
 
 if helper.process_params("LOGFILE") == "Y" :
 	# create log file handler
@@ -81,20 +84,30 @@ if helper.process_params("LOGFILE") == "Y" :
 	file_handler.setFormatter(logging.Formatter(Log_Format))
 	logger.addHandler(file_handler)
 
-display = helper.Display()
+# Has the OLED device been specified 
+if len(helper.process_params("OLED")) == 0 :
+	logger.critical("OLED Type must be specified with OLED= parameter")
+	exit()
 
-oled = "ssd1322"
+oled = helper.process_params("OLED").upper()
+
+display = helper.Display()
 
 #Load config values
 config = helper.read_config()
 
+# Find the section headings
+sections = config.sections()
+
+# Does the ini contain settings for the specified OLED
+if oled not in sections :
+	logger.critical("OLED device not defined in oled.ini")
+	exit()
+
 display.type=config[oled]['type']
-display.logo_xy = helper.parse_int_tuple(config[oled]['logo_xy'])
-display.vol_screen_line1_xy = helper.parse_int_tuple(config[oled]['vol_screen_line1_xy'])
-display.vol_screen_line2_y = int(config[oled]['vol_screen_line2_y'])
-display.vol_bar_start = int(config[oled]['vol_bar_start'])
+display.vol_screen_icon_xy = helper.parse_int_tuple(config[oled]['vol_screen_icon_xy'])
+display.vol_screen_value_y = int(config[oled]['vol_screen_value_y'])
 display.vol_screen_rect = helper.parse_int_tuple(config[oled]['vol_screen_rect'])
-display.vol_screeen_factor = float(config[oled]['vol_screeen_factor'])
 display.title_artist_line1_y = int(config[oled]['title_artist_line1_y'])
 display.title_artist_line2_y = int(config[oled]['title_artist_line2_y'])
 display.pause_xy = helper.parse_int_tuple(config[oled]['pause_xy'])
@@ -110,57 +123,71 @@ display.time_vol_icon_xy = helper.parse_int_tuple(config[oled]['time_vol_icon_xy
 display.time_vol_val_xy = helper.parse_int_tuple(config[oled]['time_vol_val_xy'])
 display.scroll_speed = int(config[oled]['scroll_speed'])
 display.spi_params = config[oled]['spi_params']
+display.device_params = config[oled]['device_params']
+display.screensave_timeout = int(config[oled]['screensave_timeout'])
+display.audiophonics_logo_font_size = int(config[oled]['audiophonics_logo_font_size'])
+display.connecting_font_size = int(config[oled]['connecting_font_size'])
+display.vol_large_font_size = int(config[oled]['vol_large_font_size'])
+display.logo_font_size = int(config[oled]['logo_font_size'])
+display.logo_large_font_size = int(config[oled]['logo_large_font_size'])
+display.title_artist_line_1_font_size = int(config[oled]['title_artist_line_1_font_size'])
+display.title_artist_line_2_font_size = int(config[oled]['title_artist_line_2_font_size'])
+display.info_font_size = int(config[oled]['info_font_size'])
+display.time_large_font_size = int(config[oled]['time_large_font_size'])
+
 
 song_data = helper.SongData()
 
-if display.type == "ssd1322" :
-	from luma.oled.device import ssd1322
-	# OLED Device
-	serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
-	# serial = spi(display.spi_params.split(","))
-	
-	device = ssd1322(serial, rotate=0, mode="1")
+oled_module = importlib.import_module("luma.oled.device")
+oled_device = getattr(oled_module,display.type)
 
+serial = spi(**json.loads(display.spi_params))
+device = oled_device(serial, **json.loads(display.device_params))
 
-elif display.type == "ssd1306" :
-	from luma.oled.device import ssd1306
-	# OLED Device
-	serial = spi(port=0, device=0, gpio_DC=27, gpio_RST=24)
-	device = ssd1306(serial, rotate=2)
+del oled_module
 
 logger.info("Device Dimensions : %s*%s", device.width, device.height)
 display.height=device.height
 display.width=device.width
 
-#Set the contrast
-if len(helper.process_params("CONTRAST")) > 1 :
-	try:
-		contrast = int(helper.process_params("CONTRAST"))
-		if contrast < 0 or contrast > 255 :
-			logger.warn("CONTRAST must be between 0 & 255")
+
+#Set the contrasts
+try:
+	contrast = int(config[oled]['contrast'])
+	if contrast < 0 or contrast > 255 :
+		logger.warn("CONTRAST must be between 0 & 255")
 			
-			contrast = 255
-		logger.info("Setting CONTRAST=%s",contrast)
-		device.contrast(contrast)
-	except:
-		logger.error("Unable to set device CONTRAST")
+		contrast = 255
+	logger.info("Setting CONTRAST=%s",contrast)
+	device.contrast(contrast)
+except:
+	logger.error("Unable to set device CONTRAST")
+
+try:
+	screensave_contrast = int(config[oled]['screensave_contrast'])
+	if screensave_contrast < 0 or screensave_contrast > 255 :
+		logger.warn("ScreenSave CONTRAST must be between 0 & 255")	
+		screensave_contrast = 255
+except:
+	logger.error("Unable to get ScreenSave CONTRAST")
 
 
-font_info		= helper.make_font('msyh.ttf', 20)
-font_vol		= helper.make_font('msyh.ttf', 55)
-font_ip			= helper.make_font('msyh.ttf', 15)
-font_time		= helper.make_font('msyh.ttf', 18)
-font_logo		= helper.make_font('arial.ttf', 42)
-font_32			= helper.make_font('arial.ttf', 50)
-awesomefont		= helper.make_font("fontawesome-webfont.ttf", 16)
-awesomefontbig	= helper.make_font("fontawesome-webfont.ttf", 42)
-# font_debug			= make_font('msyh.ttf', 10)
+
+font_title_artist_line_1	= helper.make_font('msyh.ttf', display.title_artist_line_1_font_size)
+font_title_artist_line_2	= helper.make_font('msyh.ttf', display.title_artist_line_2_font_size)
+font_vol_large			= helper.make_font('msyh.ttf', display.vol_large_font_size)
+font_info				= helper.make_font('msyh.ttf', display.info_font_size)
+font_connecting			= helper.make_font('msyh.ttf', display.connecting_font_size)
+font_audiophonics_logo	= helper.make_font('arial.ttf', display.audiophonics_logo_font_size)
+font_time_large			= helper.make_font('arial.ttf', display.time_large_font_size)
+font_logo				= helper.make_font("fontawesome-webfont.ttf", display.logo_font_size)
+font_logo_large			= helper.make_font("fontawesome-webfont.ttf", display.logo_large_font_size)
 
 wifi_logo			= "\uf1eb"
 link_logo			= "\uf0e8"
 volume_logo 		= "\uf028"
+pause_logo			= "\uf04c"
 #clock			= "\uf017"
-
 
 
 default_gateway_interface = helper.get_default_gateway_inteface()
@@ -178,22 +205,31 @@ else :
 
 def decode_metadata(json):
 	
-	if json['digital_volume_control'] == 0:
-		song_data.fixed_volume = True
-	else :
+	try:
+		if json['digital_volume_control'] == 0:
+			song_data.fixed_volume = True
+			# Fix the volume 100
+			song_data.volume = str(100)
+		else :
+			song_data.fixed_volume = False
+			if json['mixer volume'] != "":
+				song_data.volume = str(json['mixer volume'])
+	except:
 		song_data.fixed_volume = False
+		song_data.volume = 0
 
-	if json['time'] != "":
-		song_data.elapsed_time = float(json['time'])
-	else :
+	try:
+		if json['time'] != "":
+			song_data.elapsed_time = float(json['time'])
+		else :
+			song_data.elapsed_time = 0
+	except:
 		song_data.elapsed_time = 0
 
-	if json['mixer volume'] != "":
-		song_data.volume = str(json['mixer volume'])
-	else :
-		song_data.volume = ""
-
-	song_data.file_type = json['playlist_loop'][0]['type']
+	try:
+		song_data.file_type = json['playlist_loop'][0]['type']
+	except:
+		song_data.file_type = ""
 
 	try:
 		if json['playlist_loop'][0]['samplesize']  == "16":
@@ -221,27 +257,51 @@ def decode_metadata(json):
 		sample_rate = ""
 	song_data.sample_rate = sample_rate
 
-	if json['playlist_loop'][0]['bitrate'] != "":
-		song_data.bitrate = str(json['playlist_loop'][0]['bitrate'])
-	else :
+	try:
+		if json['playlist_loop'][0]['bitrate'] != "":
+			song_data.bitrate = str(json['playlist_loop'][0]['bitrate'])
+		else :
+			song_data.bitrate = ""
+	except:
 		song_data.bitrate = ""
 
-	if json['playlist_loop'][0]['duration'] != "":
-		song_data.duration = float(json['playlist_loop'][0]['duration'])
-	else :
+	try:
+		if json['playlist_loop'][0]['duration'] != "":
+			song_data.duration = float(json['playlist_loop'][0]['duration'])
+		else :
+			song_data.duration = 0
+	except:
 		song_data.duration = 0
 
-	song_data.mode = json['mode']
-	song_data.artist = json['playlist_loop'][0]['artist']
+	try:
+		song_data.mode = json['mode']
+	except:
+		song_data.mode = 'stop'
+
+	try:
+		song_data.artist = json['playlist_loop'][0]['artist']
+	except:
+		song_data.artist = ""
+	if song_data.artist == "" :
+		song_data.artist = "No Artist"
+	song_data.remote_title = json['remoteMeta']['title']
 	song_data.title = json['playlist_loop'][0]['title']
-	song_data.album = json['playlist_loop'][0]['album']
-	song_data.remote_title = json['remoteMeta']['title']	
+	
+	try:
+		song_data.album = json['playlist_loop'][0]['album']
+	except:
+		song_data.album = ""
+	if song_data.album == "":
+		if song_data.remote_title != "" :
+			song_data.album = song_data.remote_title
+		else :
+			song_data.album = "No Album"
 
 def get_metadata():
 	while True:
 		try:
 			status = helper.lms_request(lms_ip, player_mac,'"status", "-", 1, "tags:galdIrTNo"')
-			#logger.debug("Metadata Status : %s", status)
+			logger.debug("Metadata Response : %s", status)
 			
 		except:
 			server_connect()
@@ -268,7 +328,7 @@ def server_connect():
 				if len(lms_name) > 0 :
 					connecting_text += "LMS Name:" + lms_name + "\n"				
 				connecting_text += "LMS IP:" + lms_ip
-				helper.draw_multiline_text_centered(draw,connecting_text,font_time, display)
+				helper.draw_multiline_text_centered(draw,connecting_text,font_connecting, display)
 			time.sleep(1)
 
 			# Handle for subscription
@@ -285,15 +345,13 @@ def server_connect():
 		except Exception as e:
 			logger.info("Player %s not connected to LMS : %s",player_mac,lms_ip)
 			logger.error (e)
-			# traceback.print_exc()
-
 
 			with canvas(device) as draw:
-#debug
-#				draw.text((5, 20),"E :" + str(e), font=font_debug,fill="white")
-				draw.text(display.connecting_line1_xy,"Player Not Connected", font=font_time,fill="white")
-				draw.text(display.connecting_line2_xy,"MAC: " + player_mac, font=font_time,fill="white")
-				draw.text(display.connecting_line3_xy,"LMS: " + lms_ip, font=font_time,fill="white")
+				connecting_text = "Player Not Connected\n"
+				connecting_text += "MAC: " + player_mac +"\n"
+				connecting_text += "LMS: " + lms_ip
+				helper.draw_multiline_text_centered(draw,connecting_text,font_connecting, display)
+
 			time.sleep(1)
 		else :
 			break
@@ -301,9 +359,12 @@ def server_connect():
 
 # Display logo if we have enough spi buffer size via spidev.bufsiz=8192
 
-bufsizefile = open("/sys/module/spidev/parameters/bufsiz","r")
-bufsize = int(bufsizefile.read().strip())
-bufsizefile.close()
+try:
+	bufsizefile = open("/sys/module/spidev/parameters/bufsiz","r")
+	bufsize = int(bufsizefile.read().strip())
+	bufsizefile.close()
+except:
+	bufsize = 0
 
 if bufsize >= 8192:
 
@@ -316,36 +377,31 @@ if bufsize >= 8192:
 
 else:
 	with canvas(device) as draw:
-		draw.text(display.logo_xy,"Audiophonics", font=font_logo,fill="white")
+		helper.draw_multiline_text_centered(draw,"Audiophonics",font_audiophonics_logo, display)
 
 time.sleep(2)
 
-title_offset	= 0
-current_page = 0
-vol_val_store = 0
+cycle_count = 0
+volume_store = 0
 screen_sleep = 0
 timer_vol = 0
 
 screensave_xy = (3,0)
 
-info_title_store = ""
-info_state_store = ""
-info_artist = ""
-info_album = ""
-info_title = ""
-info_name = ""
-info_state = ""
+song_title_store = ""
+mode_store = ""
+file_info_store = ""
+
 screensave_chars = ("\\","|","/","-","\\","|","/","-","\\","|")
-screensave_height = font_ip.getsize("".join(screensave_chars))[1]
+screensave_height = font_info.getsize("".join(screensave_chars))[1]
+
+scroll_states = ("","WAIT_SCROLL","SCROLLING","WAIT_REWIND","WAIT_SYNC","PRE_RENDER")
+
 
 info_duration = 0
-time_val = time_min = time_sec = volume_val =  0
-volume_val = 0
+time_val = time_min = time_sec =  0
 
 bitrate_val = ""
-
-#Height difference between ip and info fonts to move bitrate line down
-bitrate_line2_adjustment = font_info.getsize("A")[1]-font_ip.getsize("A")[1]
 
 # Connect to the lms server and set sq handle
 server_connect()
@@ -353,19 +409,15 @@ server_connect()
 # Populdate Metadata once
 get_metadata()
 
-info_title = song_data.title
-info_state = song_data.mode
-
 logger.info("Player State: %s" , song_data.mode)
 
 lastrun_time = 0
 
 
-
 # Create the static screen compositions
 ip_screen_composition = ImageComposition(device)
 play_screen_composition = ImageComposition(device)
-
+volume_screen_composition = ImageComposition(device)
 
 if is_wifi == False :
 	# LAN IP Address
@@ -375,19 +427,18 @@ else:
 	network_logo = wifi_logo
 
 ip_screen_composition.add_image(
-	ComposableImage(helper.TextImage(device, network_logo, font=awesomefont).image, 
+	ComposableImage(helper.TextImage(device, network_logo, font=font_logo).image, 
 	position=display.time_ip_logo_xy))
 ip_screen_composition.add_image(
-	ComposableImage(helper.TextImage(device, player_ip, font=font_ip).image, 
+	ComposableImage(helper.TextImage(device, player_ip, font=font_info).image, 
 	position=display.time_ip_val_xy))
 if song_data.fixed_volume == False :
 	ip_screen_composition.add_image(
-		ComposableImage(helper.TextImage(device, volume_logo, font=awesomefont).image, 
+		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo).image, 
 		position=display.time_vol_icon_xy))
 	play_screen_composition.add_image(
-		ComposableImage(helper.TextImage(device, volume_logo, font=awesomefont).image, 
+		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo).image, 
 		position=display.title_line3_volume_icon_xy))
-
 
 try:
 	while True:
@@ -410,46 +461,34 @@ try:
 			lastrun_time = int(time.time() * 1000)
 		# Update song data no more than once per 375 milliseconds when not stopped
 		elif ((int(time.time() * 1000) - lastrun_time) > 375) and  song_data.mode != "stop": 	
-			get_metadata()
+			try:
+				get_metadata()
+			except Exception as e:
+				logger.info("e : %s",e)
 			lastrun_time = int(time.time() * 1000)
 		# Update song data every 10 secs 
 		elif ((int(time.time() * 1000) - lastrun_time) > 10000) :
 			logger.debug("10 second update")
 			get_metadata()
 			lastrun_time = int(time.time() * 1000)
-		
-		info_title = song_data.title
-		info_state = song_data.mode
 
 		synchroniser = helper.Synchroniser()
 
 		# One time update		
-		if info_title_store != info_title or info_state_store != info_state:
+		if song_title_store != song_data.title or mode_store != song_data.mode or (song_data.sample_size + song_data.sample_rate + str(song_data.bitrate) + song_data.file_type) != file_info_store:
 
 			# Current file or state is different to last loop
 
-			info_artist	 = song_data.artist
-			if info_artist == "" :
-				info_artist	 = "No Artist"
-			info_album	  = song_data.album
-			# If there's no Album, is it an internet radio stream
-			# remote_title = song_data.album
-			if info_album == "" :
-				# If there's no Album, is it an internet radio stream
-				remote_title = song_data.remote_title
-				if remote_title != "" :
-					info_album = remote_title
-				else :
-					info_album	 = "No Album"
-
-			info_title	  = song_data.title
+			current_TA_page = "title"
+			permit_screen_change = True
+			cycle_count = 0
 
 			try:
 				del scroll_play_line_1
-
 			except:
 				logger.debug("Removal Failed")
-			ci_play_line_1 = ComposableImage(helper.TextImage(device, info_title, font=font_info).image, 
+
+			ci_play_line_1 = ComposableImage(helper.TextImage(device, song_data.title, font=font_title_artist_line_1).image, 
 					position=(0,display.title_artist_line1_y))
 			scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
 
@@ -463,7 +502,7 @@ try:
 			else :
 				bitrate_val = str(song_data.bitrate)
 
-			bitrate_width, char = font_ip.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
+			bitrate_width, char = font_title_artist_line_2.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
 			
 			x_bitrate_pos = int((display.width - bitrate_width) / 2)
 			if x_bitrate_pos < 0 :
@@ -474,8 +513,8 @@ try:
 			except:
 				logger.debug("No bitrate to remove")
 
-			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_ip).image, 
-					position=(x_bitrate_pos, display.title_artist_line2_y + bitrate_line2_adjustment))
+			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_title_artist_line_2).image, 
+					position=(x_bitrate_pos, display.title_artist_line2_y))
 			
 			scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
 
@@ -489,9 +528,9 @@ try:
 			else : 
 				dura_val = ""
 
-		info_title_store = info_title
-		info_state_store = info_state
-		
+		song_title_store = song_data.title
+		mode_store = song_data.mode
+		file_info_store = song_data.sample_size + song_data.sample_rate + str(song_data.bitrate) + song_data.file_type
 # Continuous update			
 		try :
 			time_val = song_data.elapsed_time
@@ -504,103 +543,138 @@ try:
 		except :
 			time_val = 0
 
-		if song_data.fixed_volume == False :
-			volume_val = song_data.volume
-		else:
-			volume_val = str(100)
-			vol_val_store = volume_val
-			
-		
-		# Volume change screen.  Only show if it's not fixed volume.
-		if volume_val != vol_val_store : timer_vol = 20
+		# Volume change screen.  Will only show if it's not fixed volume.
+		if song_data.volume != volume_store and song_data.fixed_volume == False : timer_vol = 20
 		if timer_vol > 0 :
+			
+			if screen_sleep >= display.screensave_timeout:
+				#The screensaver was showing
+				#reset screen saver counter
+				screen_sleep = 0
+				device.contrast(contrast)
+			
 			with canvas(device) as draw:
-				vol_width, char = font_vol.getsize(volume_val)
+				vol_width, char = font_vol_large.getsize(song_data.volume)
 				x_vol = ((display.width - vol_width) / 2)
 				# Volume Display
-				draw.text(display.vol_screen_line1_xy, volume_logo, font=awesomefontbig, fill="white")
-				draw.text((x_vol, display.vol_screen_line2_y), volume_val, font=font_vol, fill="white")
+				draw.text(display.vol_screen_icon_xy, volume_logo, font=font_logo_large, fill="white")
+				draw.text((x_vol, display.vol_screen_value_y), song_data.volume, font=font_vol_large, fill="white")
 				# Volume Bar
-				draw.rectangle(display.vol_screen_rect, outline=1, fill=0)
-				Volume_bar = (display.vol_bar_start - (int(float(volume_val)) * display.vol_screeen_factor)+2)
+				Volume_bar_width = ((int(float(song_data.volume)) * (display.vol_screen_rect[2]-display.vol_screen_rect[0])/100))
 				draw.rectangle((display.vol_screen_rect[0],
 						display.vol_screen_rect[1],
-						Volume_bar,
-						display.vol_screen_rect[3]), outline=0, fill=1)
-			vol_val_store = volume_val
+						Volume_bar_width,
+						display.vol_screen_rect[3]), outline=1, fill=1)
+			volume_store = song_data.volume
 			timer_vol = timer_vol - 1
+			
 			screen_sleep = 0
 			time.sleep(0.1)	
 			
 		# Play screen
-		elif info_state != "stop":
+		elif song_data.mode != "stop":
 			
-			#reset screen saver counter
-			screen_sleep = 0
+			if screen_sleep >= display.screensave_timeout:
+				#The screensaver was showing
+				#reset screen saver counter
+				screen_sleep = 0
+				device.contrast(contrast)
 
 			if info_duration != 0 :
 				time_bar = time_bar / info_duration * display.width
 
-			if time_bar < 5 :
-				current_page = 0
+#			if time_bar < 5 :
+#				cycle_count = 0
 
 			# Switch over the lines after 150 cycles
 
-			if current_page == 150 :
+			# if (cycle_count == 150 and scrolling == False) or title_scroll_completed == True:
+			if (cycle_count == 150 and permit_screen_change == True):
 				#Swap to artist & album
+				logger.debug("Swapping to Artist")
 				try:
 					del scroll_play_line_1
 					del scroll_play_line_2
 				except:
 					logger.debug("No Image to remove")
 
-				ci_play_line_1 = ComposableImage(helper.TextImage(device, info_artist
-					, font=font_info).image, 
+				ci_play_line_1 = ComposableImage(helper.TextImage(device, song_data.artist
+					, font=font_title_artist_line_1).image, 
 					position=(0, display.title_artist_line1_y))
 				
-				ci_play_line_2 = ComposableImage(helper.TextImage(device, info_album
-					, font=font_info).image, 
+				ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.album
+					, font=font_title_artist_line_2).image, 
 					position=(0, display.title_artist_line2_y))	
 
 				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
 				scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
 
-			if current_page == 300 :
+				title_scroll_completed = False
+				current_TA_page = "artist"
+
+			if cycle_count > 150 and permit_screen_change == True and current_TA_page == "title":
+				# Scrolling is finished
+				cycle_count=149
+
+			if (cycle_count == 300 and permit_screen_change == True and current_TA_page == "artist"):
 				#Swap to title & bitrate
+				logger.debug("Swapping to title")
 				try:
 					del scroll_play_line_1
 					del scroll_play_line_2
 				except:
 					logger.debug("No Image to remove")
 
-				ci_play_line_1 = ComposableImage(helper.TextImage(device, info_title
-					, font=font_info).image, 
+				ci_play_line_1 = ComposableImage(helper.TextImage(device, song_data.title
+					, font=font_title_artist_line_1).image, 
 					position=(0, display.title_artist_line1_y))
 					
 				ci_play_line_2 = ComposableImage(helper.TextImage(device, 
 					song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, 
-					font=font_ip).image, 
-					position=(x_bitrate_pos, display.title_artist_line2_y) + bitrate_line2_adjustment)
+					font=font_title_artist_line_2).image, 
+					position=(x_bitrate_pos, display.title_artist_line2_y))
 								
 				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
 				scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
 
-				current_page = 0
+				cycle_count = 0
 
-			scroll_play_line_1.tick()
-			scroll_play_line_2.tick()
-			current_page += 1
+				current_TA_page = "title"
+
+			if cycle_count > 300 and permit_screen_change == True and current_TA_page == "artist":
+				# Scrolling is finished
+				cycle_count=299
+
+
+			if (cycle_count > 300 and current_TA_page == "artist") or (cycle_count > 150 and current_TA_page == "title") :
+				#Waiting for a scroll to finish before changing display
+				scroll_play_line_1_state = scroll_play_line_1.tick(redraw = False)
+				scroll_play_line_2_state = scroll_play_line_2.tick(redraw = False)
+			else:	
+				scroll_play_line_1_state = scroll_play_line_1.tick()
+				scroll_play_line_2_state = scroll_play_line_2.tick()
+
+			if (scroll_states[scroll_play_line_1_state] == "WAIT_SCROLL") and (scroll_states[scroll_play_line_2_state] == "WAIT_SCROLL"):
+			
+				permit_screen_change = True
+			
+			else:
+				permit_screen_change = False
+
+			#logger.debug("Count %i	L1 %s	L2 %s,	TA %s",cycle_count, scroll_states[scroll_play_line_1_state],scroll_states[scroll_play_line_2_state],current_TA_page )
+
+			cycle_count += 1
 
 			with canvas(device, background=play_screen_composition()) as draw:
 
 				play_screen_composition.refresh()
 
 				# Bottom line
-				if info_state == "pause": 
-					draw.text(display.pause_xy, text="\uf04c", font=awesomefont, fill="white")
+				if song_data.mode == "pause": 
+					draw.text(display.pause_xy, text=pause_logo, font=font_logo, fill="white")
 				else:
-					draw.text(display.title_line3_time_xy, time_val, font=font_time, fill="white")
-					draw.text(display.title_line3_duration_xy, dura_val, font=font_time, fill="white")
+					draw.text(display.title_line3_time_xy, time_val, font=font_info, fill="white")
+					draw.text(display.title_line3_duration_xy, dura_val, font=font_info, fill="white")
 				
 				draw.rectangle((display.title_timebar[0],
 					display.title_timebar[1],
@@ -608,24 +682,28 @@ try:
 					display.title_timebar[3]), outline=0, fill=1)
 
 				if song_data.fixed_volume == False :
-					draw.text(display.title_line3_volume_val_xy, volume_val, font=font_time, fill="white")
+					draw.text(display.title_line3_volume_val_xy, song_data.volume, font=font_info, fill="white")
 
 			time.sleep(0.05)
 
 		else:
 			# Time IP screen
-			if screen_sleep < 5000 :
+			if screen_sleep < display.screensave_timeout :
 				with canvas(device, background=ip_screen_composition()) as draw:
 
 					ip_screen_composition.refresh()
 
-					draw.text(display.time_xy,time.strftime("%X"), font=font_32,fill="white")
+					draw.text(display.time_xy,time.strftime("%X"), font=font_time_large,fill="white")
 					if song_data.fixed_volume == False :
-						draw.text(display.time_vol_val_xy, volume_val, font=font_time, fill="white")
+						draw.text(display.time_vol_val_xy, song_data.volume, font=font_info, fill="white")
 				screen_sleep = screen_sleep + 1
 			else :
+				# Show the screensaver
 				with canvas(device) as draw:
-					if screen_sleep == 5000:
+					if screen_sleep == display.screensave_timeout:
+						# Dim the display
+						device.contrast(screensave_contrast)
+
 						# Start screensave on a random char
 						screensave_char_index = int(helper.get_digit(time.time(),0))
 						try:
@@ -635,7 +713,7 @@ try:
 								screensave_xy = (screensave_xy[0],int(display.height - screensave_height))
 						except:
 								screensave_xy = (screensave_xy[0],0)
-						screen_sleep += 1
+						screen_sleep = display.screensave_timeout + 1
 					screensave_xy = (screensave_xy[0]+2,screensave_xy[1])
 					if screensave_xy[0] >= display.width -1 : 
 						screensave_xy = (3,screensave_xy[1]+1)
@@ -643,12 +721,13 @@ try:
 					if screensave_xy[1] >= display.height - screensave_height :
 						screensave_xy = (screensave_xy[0],0)
 
-					draw.text(screensave_xy, screensave_chars[screensave_char_index], font=font_ip, fill="white")
+					draw.text(screensave_xy, screensave_chars[screensave_char_index], font=font_info, fill="white")
 					screensave_char_index += 1
 					if screensave_char_index >= 8:
 						screensave_char_index =0
 				time.sleep(1)							
 			time.sleep(0.1)
+
 except Exception as e:
 	exc_type, exc_obj, exc_tb = sys.exc_info()
 	fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]

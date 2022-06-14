@@ -7,7 +7,7 @@ import sys
 import os
 
 def get_default_gateway_inteface():
-    return netifaces.gateways()['default'][netifaces.AF_INET][1]
+	return netifaces.gateways()['default'][netifaces.AF_INET][1]
 
 def process_params(item):
 	for params in sys.argv:
@@ -47,12 +47,11 @@ def lms_request(lms_ip, playermac,params,field=""):
 	return response
 
 def get_digit(number, n):
-    return number // 10**n % 10
+	return number // 10**n % 10
 
 # Method to read config file settings
 def read_config():
 	config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oled.ini'))
-	logger.info("config path :%s", config_path)
 	config = configparser.ConfigParser()
 	config.read(config_path)
 	return config
@@ -65,114 +64,120 @@ def make_font(name, size):
 
 
 def parse_int_tuple(input):
-    return tuple(int(k.strip()) for k in input[1:-1].split(','))
+	return tuple(int(k.strip()) for k in input[1:-1].split(','))
 
 def parse_tuple(input):
-    return tuple(k.strip() for k in input[1:-1].split(','))
+	return tuple(k.strip() for k in input[1:-1].split(','))
 
 
 class TextImage():
-    def __init__(self, device, text, font):
-        #with canvas(device) as draw:
-        #    w, h = draw.textsize(text, font)
+	def __init__(self, device, text, font):
+		#with canvas(device) as draw:
+		#	w, h = draw.textsize(text, font)
 
 		# Change to getsize to try and workaround screen blink on canvas draw
-        w, h = font.getsize(text)
-        
-        self.image = Image.new(device.mode, (w, h))
-        draw = ImageDraw.Draw(self.image)
-        draw.text((0, 0), text, font=font, fill="white")
-        del draw
-        self.width = w
-        self.height = h
+		w, h = font.getsize(text)
+		
+		self.image = Image.new(device.mode, (w, h))
+		draw = ImageDraw.Draw(self.image)
+		draw.text((0, 0), text, font=font, fill="white")
+		del draw
+		self.width = w
+		self.height = h
 
 class Synchroniser():
-    def __init__(self):
-        self.synchronised = {}
+	def __init__(self):
+		self.synchronised = {}
 
-    def busy(self, task):
-        self.synchronised[id(task)] = False
+	def busy(self, task):
+		self.synchronised[id(task)] = False
 
-    def ready(self, task):
-        self.synchronised[id(task)] = True
+	def ready(self, task):
+		self.synchronised[id(task)] = True
 
-    def is_synchronised(self):
-        for task in self.synchronised.items():
-            if task[1] is False:
-                return False
-        return True
+	def is_synchronised(self):
+		for task in self.synchronised.items():
+			if task[1] is False:
+				return False
+		return True
 
 
 import time
 
 class Scroller():
-    WAIT_SCROLL = 1
-    SCROLLING = 2
-    WAIT_REWIND = 3
-    WAIT_SYNC = 4
+	WAIT_SCROLL = 1
+	SCROLLING = 2
+	WAIT_REWIND = 3
+	WAIT_SYNC = 4
+	PRE_RENDER = 5
 
-    def __init__(self, image_composition, rendered_image, scroll_delay, synchroniser, scroll_speed):
-        self.image_composition = image_composition
-        self.speed = scroll_speed
-        self.image_x_pos = 0
-        self.rendered_image = rendered_image
-        self.image_composition.add_image(rendered_image)
-        self.max_pos = rendered_image.width - image_composition().width
-        self.delay = scroll_delay
-        self.ticks = 0
-        self.state = self.WAIT_SCROLL
-        self.synchroniser = synchroniser
-        self.render()
-        self.synchroniser.busy(self)
-        self.cycles = 0
-        self.must_scroll = self.max_pos > 0
+	def __init__(self, image_composition, rendered_image, scroll_delay, synchroniser, scroll_speed):
+		self.image_composition = image_composition
+		self.speed = scroll_speed
+		self.image_x_pos = 0
+		self.rendered_image = rendered_image
+		self.image_composition.add_image(rendered_image)
+		self.max_pos = rendered_image.width - image_composition().width
+		self.delay = scroll_delay
+		self.ticks = 0
+		self.state = self.WAIT_SCROLL
+		self.synchroniser = synchroniser
+		self.render()
+		self.synchroniser.busy(self)
+		self.cycles = 0
+		self.must_scroll = self.max_pos > 0
 
-    def __del__(self):
-        self.image_composition.remove_image(self.rendered_image)
+	def __del__(self):
+		self.image_composition.remove_image(self.rendered_image)
 
-    def tick(self):
+	def tick(self, redraw = True):
 
-        # Repeats the following sequence:
-        #  wait - scroll - wait - rewind -> sync with other scrollers -> wait
-        if self.state == self.WAIT_SCROLL:
-            if not self.is_waiting():
-                self.cycles += 1
-                self.state = self.SCROLLING
-                self.synchroniser.busy(self)
+		# Repeats the following sequence:
+		#  wait - scroll - wait - rewind -> sync with other scrollers -> wait
+		if self.state == self.WAIT_SCROLL:
+			if not self.is_waiting():
+				self.cycles += 1
+				self.state = self.SCROLLING
+				self.synchroniser.busy(self)
 
-        elif self.state == self.WAIT_REWIND:
-            if not self.is_waiting():
-                self.synchroniser.ready(self)
-                self.state = self.WAIT_SYNC
+		elif self.state == self.WAIT_REWIND:
+			if not self.is_waiting():
+				self.synchroniser.ready(self)
+				self.state = self.WAIT_SYNC
 
-        elif self.state == self.WAIT_SYNC:
-            if self.synchroniser.is_synchronised():
-                if self.must_scroll:
-                    self.image_x_pos = 0
-                    self.render()
-                self.state = self.WAIT_SCROLL
+		elif self.state == self.PRE_RENDER:
+			self.state = self.WAIT_SYNC
 
-        elif self.state == self.SCROLLING:
-            if self.image_x_pos < self.max_pos:
-                if self.must_scroll:
-                    self.render()
-                    self.image_x_pos += self.speed
-            else:
+		elif self.state == self.WAIT_SYNC:
+			if self.synchroniser.is_synchronised():
+				if self.must_scroll:
+					if redraw == True:
+						self.image_x_pos = 0
+						self.render()
+				self.state = self.WAIT_SCROLL
+
+		elif self.state == self.SCROLLING:
+			if self.image_x_pos < self.max_pos:
+				if self.must_scroll:
+					self.render()
+					self.image_x_pos += self.speed
+			else:
 				#scroll has.completed
-                self.state = self.WAIT_REWIND
+				self.state = self.WAIT_REWIND
+		return self.state
 
-    def render(self):
-        self.rendered_image.offset = (self.image_x_pos, 0)
+	def render(self):
+		self.rendered_image.offset = (self.image_x_pos, 0)
 
-    def is_waiting(self):
-        self.ticks += 1
-        if self.ticks > self.delay:
-            self.ticks = 0
-            return False
-        return True
+	def is_waiting(self):
+		self.ticks += 1
+		if self.ticks > self.delay:
+			self.ticks = 0
+			return False
+		return True
 
-    def get_cycles(self):
-        return self.cycles
+	def get_cycles(self):
+		return self.cycles
 
 
 
@@ -204,11 +209,9 @@ class SongData:
 class Display:
 	type=""
 	logo_xy = (0,0)
-	vol_screen_line1_xy = (0,0)
-	vol_screen_line2_y = 0
-	vol_bar_start = 0
+	vol_screen_icon_xy = (0,0)
+	vol_screen_value_y = 0
 	vol_screen_rect = (0,0,0,0)
-	vol_screeen_factor = 0.0
 	title_artist_line1_y = 0
 	title_artist_line2_y = 0
 	pause_xy = (0, 0)
@@ -226,6 +229,16 @@ class Display:
 	width = 0
 	height = 0
 	spi_params = ""
+	screensave_timeout = 0
+	audiophonics_logo_font_size = 0
+	connecting_font_size = 0
+	vol_large_font_size = 0
+	logo_font_size = 0
+	logo_large_font_size = 0
+	title_artist_line_1_font_size = 0
+	title_artist_line_2_font_size = 0
+	info_font_size = 0
+	time_large_font_size = 0
 
 
 class LMSTelnetServer(object):
