@@ -1,0 +1,41 @@
+begin
+remote = ApMini
+button = KEY_UP
+repeat = 0
+prog = squeezelite
+config = volup
+end 
+
+begin
+remote = ApMini
+button = KEY_DOWN
+repeat = 0
+prog = squeezelite
+config = voldown
+end 
+
+begin
+remote = ApMini
+button = KEY_RIGHT
+repeat = 0
+prog = squeezelite
+config = fwd
+end 
+
+begin
+remote = ApMini
+button = KEY_LEFT
+repeat = 0
+prog = squeezelite
+config = rew
+end 
+
+begin
+    remote = ApMini
+    button = KEY_PLAY
+    repeat = 0
+    prog = squeezelite
+    config = play
+end 
+
+

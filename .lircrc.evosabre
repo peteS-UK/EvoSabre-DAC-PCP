@@ -1,0 +1,81 @@
+begin
+remote = ApEvo
+button = volplus
+repeat = 0
+prog = squeezelite
+config = volup
+end 
+
+begin
+remote = ApEvo
+button = volminus
+repeat = 0
+prog = squeezelite
+config = voldown
+end 
+
+begin
+remote = ApEvo
+button = right
+repeat = 0
+prog = squeezelite
+config = fwd
+end 
+
+begin
+remote = ApEvo
+button = left
+repeat = 0
+prog = squeezelite
+config = rew
+end 
+
+begin
+remote = ApEvo
+button = up
+repeat = 0
+prog = squeezelite
+config = next
+end 
+
+begin
+remote = ApEvo
+button = down
+repeat = 0
+prog = squeezelite
+config = prev
+end 
+
+begin
+remote = ApEvo
+button = playleft
+repeat = 0
+prog = squeezelite
+config = pause
+end 
+
+begin
+    remote = ApEvo
+    button = play
+    repeat = 0
+    prog = squeezelite
+    config = play
+    end 
+
+begin
+remote = ApEvo
+button = stop
+repeat = 0
+prog = squeezelite
+config = stop
+end 
+
+begin
+remote = ApEvo
+button = poweroff
+repeat = 0
+prog = squeezelite
+config = power
+end 
+
+

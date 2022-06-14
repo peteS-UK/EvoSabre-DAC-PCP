@@ -1,0 +1,45 @@
+
+# Please make this file available to others
+# by sending it to <lirc@bartelmus.de>
+#
+# this config file was automatically generated
+# using lirc-0.9.0-pre1(default) on Wed Aug  1 17:52:02 2018
+#
+# contributed by 
+#
+# brand:                       /awesome_audiophonics_remote
+# model no. of remote control: 
+# devices being controlled by this remote:
+#
+
+begin remote
+
+  name  ApMini
+  bits            8
+  flags SPACE_ENC|CONST_LENGTH
+  eps            30
+  aeps          100
+
+  header       9047  4480
+  one           603  1664
+  zero          603   531
+  ptrail        603
+  repeat       9047  2226
+  pre_data_bits   16
+  pre_data       0x77E1
+  post_data_bits  8
+  post_data      0x55
+  gap          108227
+  toggle_bit_mask 0x0
+
+      begin codes
+          KEY_LEFT                 0x10 
+          KEY_RIGHT                0xE0 
+          KEY_UP                   0xD0 
+          KEY_DOWN                 0xB0 
+          KEY_ENTER                0xBA 0x20
+          KEY_MENU                 0x40
+          KEY_PLAY                 0x7A 0x20
+      end codes
+
+end remote
