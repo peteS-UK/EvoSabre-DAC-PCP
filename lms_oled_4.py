@@ -23,10 +23,11 @@
 # Improve discovery handling with local LMS
 # June 22
 # Change to using jsonrpc for polling
-# Restrict polling when LMS is off
+# Restrict polling when player is off
 # Switch to subscription for mode and power change vs. constant polling
 # Read from config file for oled setup
 # Change to composed images and updating scrolling design
+# Auto switch contrast at dawn and dusk, using data from https://sunrise-sunset.org/api
 
 
 
@@ -36,11 +37,14 @@ importlib.reload(sys)
 
 import os
 import time
+from datetime import datetime, timezone
 
 import urllib.parse
 import json
 
 import logging
+
+
  
 #Log_Format = "%(levelname)s %(asctime)s - %(message)s"
 Log_Format = "%(levelname)s	%(message)s"
@@ -80,7 +84,7 @@ import helper
 if helper.process_params("LOGFILE") == "Y" :
 	# create log file handler
 	logger.info("Outputting to log file")
-	file_handler = logging.FileHandler('evosabre.log', mode='w')
+	file_handler = logging.FileHandler('pcpoled.log', mode='w')
 	file_handler.setFormatter(logging.Formatter(Log_Format))
 	logger.addHandler(file_handler)
 
@@ -101,7 +105,7 @@ sections = config.sections()
 
 # Does the ini contain settings for the specified OLED
 if oled not in sections :
-	logger.critical("OLED device not defined in oled.ini")
+	logger.critical("OLED device not defined in oled.cfg")
 	exit()
 
 display.type=config[oled]['type']
@@ -150,24 +154,30 @@ logger.info("Device Dimensions : %s*%s", device.width, device.height)
 display.height=device.height
 display.width=device.width
 
+location = helper.process_params("LOCATION")
+lat = 0
+lng = 0
+
+if location != "":
+	lat = float(location.split(",")[0])
+	lng = float(location.split(",")[1])
+	daynight = helper.daynight(datetime.now(tz=timezone.utc), lat, lng)
+else:
+	daynight = "unknown"
+
+daynight_store = daynight
+
+contrast_day = int(config[oled]['contrast_day'])
+contrast_night = int(config[oled]['contrast_night'])
 
 #Set the contrasts
-try:
-	contrast = int(config[oled]['contrast'])
-	if contrast < 0 or contrast > 255 :
-		logger.warn("CONTRAST must be between 0 & 255")
-			
-		contrast = 255
-	logger.info("Setting CONTRAST=%s",contrast)
-	device.contrast(contrast)
-except:
-	logger.error("Unable to set device CONTRAST")
+helper.set_contrast(daynight, contrast_day, contrast_night, device)
 
 try:
-	screensave_contrast = int(config[oled]['screensave_contrast'])
-	if screensave_contrast < 0 or screensave_contrast > 255 :
+	contrast_screensave = int(config[oled]['contrast_screensave'])
+	if contrast_screensave < 0 or contrast_screensave > 255 :
 		logger.warn("ScreenSave CONTRAST must be between 0 & 255")	
-		screensave_contrast = 255
+		contrast_screensave = 255
 except:
 	logger.error("Unable to get ScreenSave CONTRAST")
 
@@ -543,6 +553,15 @@ try:
 		except :
 			time_val = 0
 
+		# Check to see if day night has changed and change the contrast accordingly
+		if screen_sleep < display.screensave_timeout :
+			daynight = helper.daynight(datetime.now(tz=timezone.utc), lat, lng)
+			if daynight_store != daynight:
+				# We've changed day to night or back
+				logger.info("Switching Day/night Contrast")
+				daynight_store = daynight
+				helper.set_contrast(daynight, contrast_day, contrast_night, device)
+
 		# Volume change screen.  Will only show if it's not fixed volume.
 		if song_data.volume != volume_store and song_data.fixed_volume == False : timer_vol = 20
 		if timer_vol > 0 :
@@ -551,7 +570,7 @@ try:
 				#The screensaver was showing
 				#reset screen saver counter
 				screen_sleep = 0
-				device.contrast(contrast)
+				helper.set_contrast(daynight, contrast_day, contrast_night, device)
 			
 			with canvas(device) as draw:
 				vol_width, char = font_vol_large.getsize(song_data.volume)
@@ -578,7 +597,7 @@ try:
 				#The screensaver was showing
 				#reset screen saver counter
 				screen_sleep = 0
-				device.contrast(contrast)
+				helper.set_contrast(daynight, contrast_day, contrast_night, device)
 
 			if info_duration != 0 :
 				time_bar = time_bar / info_duration * display.width
@@ -702,7 +721,7 @@ try:
 				with canvas(device) as draw:
 					if screen_sleep == display.screensave_timeout:
 						# Dim the display
-						device.contrast(screensave_contrast)
+						device.contrast(contrast_screensave)
 
 						# Start screensave on a random char
 						screensave_char_index = int(helper.get_digit(time.time(),0))

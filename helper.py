@@ -5,6 +5,7 @@ import socket
 import netifaces
 import sys
 import os
+from datetime import datetime
 
 def get_default_gateway_inteface():
 	return netifaces.gateways()['default'][netifaces.AF_INET][1]
@@ -36,6 +37,71 @@ logger.setLevel(logging.INFO)
 logging.getLogger('REQUESTS').setLevel(logging.ERROR)
 
 
+def get_sunrise_data(lat, lng):
+
+	url = "https://api.sunrise-sunset.org/json?lat=" + str(lat) + "&lng=" + str(lng) + "&formatted=0"
+	response = requests.get(url).json()
+
+	status = response['status']
+	if status != "OK":
+		return "unknown","unknown"
+
+	return datetime.fromisoformat(response['results']['sunrise']), datetime.fromisoformat(response['results']['sunset'])
+
+def daynight(date, lat, lng):
+
+	global sunrise
+	global sunset
+
+	if lat == 0 or lng == 0 :
+		return "unknown"
+
+	try:
+		if sunrise.strftime("%d") != date.strftime("%d") :			
+			# date is from a different day to the last sunrise data, so refresh
+			logger.info("Getting new dusk/dawn data for new day")
+			sunrise, sunset = get_sunrise_data(lat, lng)
+	except:
+		# No sunrise data currently
+		logger.info("Dusk/Dawn data not set.  Getting new data")
+		sunrise, sunset = get_sunrise_data(lat, lng)
+
+	if sunrise == "unknown":
+		return "unknown"
+
+	if date < sunrise:
+		return "night"
+	elif date > sunrise and date < sunset :
+		return "day"
+	else:
+		return "night"
+
+def set_contrast(daynight, contrast_day, contrast_night, device):
+	try:
+		if contrast_day < 0 or contrast_day > 255 :
+			logger.warn("Day Contrast must be between 0 & 255")
+			contrast_day = 255
+
+		if contrast_night < 0 or contrast_night > 255 :
+			logger.warn("Night Contrast must be between 0 & 255")
+			contrast_night = 255
+
+		if  daynight == "day":
+			logger.info("Setting daytime contrast: %s",contrast_day)
+			contrast = contrast_day
+
+		elif daynight == "night":
+			logger.info("Setting nighttime contrast: %s",contrast_night)
+			contrast = contrast_night
+
+		else:
+			logger.info("Setting default contrast: %s",contrast_day)
+			contrast = contrast_day
+	
+		device.contrast(contrast)
+	except:
+		logger.error("Unable to set device Contrast")
+
 def lms_request(lms_ip, playermac,params,field=""):
 	data = '{ "id": 1, "method": "slim.request", "params": ["' + playermac + '", [' + params + ']]}'
 	#logger.debug("data is %s", data)
@@ -51,7 +117,7 @@ def get_digit(number, n):
 
 # Method to read config file settings
 def read_config():
-	config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oled.ini'))
+	config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oled.cfg'))
 	config = configparser.ConfigParser()
 	config.read(config_path)
 	return config
@@ -229,7 +295,7 @@ class Display:
 	width = 0
 	height = 0
 	spi_params = ""
-	screensave_timeout = 0
+	screensaveS_timeout = 0
 	audiophonics_logo_font_size = 0
 	connecting_font_size = 0
 	vol_large_font_size = 0
