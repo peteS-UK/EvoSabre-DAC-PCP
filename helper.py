@@ -305,7 +305,8 @@ class Display:
 	title_artist_line_2_font_size = 0
 	info_font_size = 0
 	time_large_font_size = 0
-
+	stopped_polling_interval = 0
+	playing_polling_interval = 0
 
 class LMSTelnetServer(object):
 

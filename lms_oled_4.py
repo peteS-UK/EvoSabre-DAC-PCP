@@ -46,7 +46,7 @@ import logging
 
 
  
-#Log_Format = "%(levelname)s %(asctime)s - %(message)s"
+File_Log_Format = "%(levelname)s %(asctime)s - %(message)s"
 Log_Format = "%(levelname)s	%(message)s"
 # Creating an object
 logger = logging.getLogger("oled")
@@ -84,8 +84,8 @@ import helper
 if helper.process_params("LOGFILE") == "Y" :
 	# create log file handler
 	logger.info("Outputting to log file")
-	file_handler = logging.FileHandler('pcpoled.log', mode='w')
-	file_handler.setFormatter(logging.Formatter(Log_Format))
+	file_handler = logging.FileHandler('pcpoled.log', mode='a')
+	file_handler.setFormatter(logging.Formatter(File_Log_Format))
 	logger.addHandler(file_handler)
 
 # Has the OLED device been specified 
@@ -138,7 +138,8 @@ display.title_artist_line_1_font_size = int(config[oled]['title_artist_line_1_fo
 display.title_artist_line_2_font_size = int(config[oled]['title_artist_line_2_font_size'])
 display.info_font_size = int(config[oled]['info_font_size'])
 display.time_large_font_size = int(config[oled]['time_large_font_size'])
-
+display.playing_polling_interval = int(config[oled]['playing_polling_interval'])
+display.stopped_polling_interval = int(config[oled]['stopped_polling_interval'])
 
 song_data = helper.SongData()
 
@@ -378,8 +379,9 @@ except:
 
 if bufsize >= 8192:
 
+	logo_name = "logo_"+str(device.width)+"_"+str(device.height)+".bmp"
 	logo_path = os.path.abspath(os.path.join(
-	os.path.dirname(__file__), "logo.bmp"))
+	os.path.dirname(__file__), logo_name))
 	
 	with Image.open(logo_path).convert("1") as logo:
 		with canvas(device) as draw:
@@ -470,14 +472,14 @@ try:
 			get_metadata()
 			lastrun_time = int(time.time() * 1000)
 		# Update song data no more than once per 375 milliseconds when not stopped
-		elif ((int(time.time() * 1000) - lastrun_time) > 375) and  song_data.mode != "stop": 	
+		elif ((int(time.time() * 1000) - lastrun_time) > display.playing_polling_interval) and  song_data.mode != "stop": 	
 			try:
 				get_metadata()
 			except Exception as e:
 				logger.info("e : %s",e)
 			lastrun_time = int(time.time() * 1000)
 		# Update song data every 10 secs 
-		elif ((int(time.time() * 1000) - lastrun_time) > 10000) :
+		elif ((int(time.time() * 1000) - lastrun_time) > display.stopped_polling_interval) :
 			logger.debug("10 second update")
 			get_metadata()
 			lastrun_time = int(time.time() * 1000)

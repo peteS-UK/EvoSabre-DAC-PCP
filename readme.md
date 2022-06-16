@@ -6,11 +6,28 @@ This project began to allow me to control the second OLED screen on the excellen
 
 As such, there's now 2 sections to this document.  The first section involves the installation and configuration of the OLED scripts for PCP, and the second relates to configuration of PCP for the Audiophonics EvoSabre DAC, setup Infrared etc..
 
-Both of these processes assume that you're starting with a fresh install of PCP 7 or 8, which is connected to your network via ethernet or WiFi and that you have the ability to SSH onto your PCP.
+Both of these processes assume that you're starting with a fresh install of PCP 7 or 8, which is connected to your network via ethernet or WiFi and that you have the ability to SSH onto your PCP.  You can use either 32bit or 64bit versions of PCP.
+
+## Functionality
+
+The purpose of the script is to display information from the LMS on the OLED.
+
+- Alternate between Title/Track-Info and Artist/Album when playing, with automatic scrolling when required
+- Auto discover LMS IP and player MAC address
+- Use combination of subscription for state changes (power, play etc.) and jsonrpc polling when playing, with separate backup polling in case subscription doesn't update
+- Font sizes, text locations etc. are configurable in external .cfg file
+- Potential support for any device supported by luma.oled
+- Auto switching between day and night contrast, with contrast levels defined in external .cfg
+- Separate screen saver contrast setting, with screen saver contrast and screen saver delay in external .cfg
+- Display clock when player is stopped or off
+
+
+
+ 
 
 ## Installing OLED Control for PCP
 
-OLED control for PCP requires various components, including some standard PCP extensions including Python 3, a dedicated extension for OLED, some python scripts and fonts.  You can install all of these by downloading and executing a setup script.
+OLED control for PCP requires various components, including some standard PCP extensions, such as Python 3, a dedicated extension for OLED, some python scripts and fonts.  You can install all of these by downloading and executing a setup script.
 
 SSH onto your PCP then
 
@@ -156,7 +173,24 @@ chmod +x ./SetupLirc.sh
 pcp rb
 ```
 
+## Credits
 
+I've leant heavily on other people's work to try and build this extension and script.  In particular, I'd reference
 
+Python2 Audiophonics script.  I started with the original python2 DietPi script, updated it to Python3, and then over time, I've removed pretty much all of the original code, but this was the genesis.
 
+luma.core and luma.oled and examples.   The OLED control is based on luma.core and luma.oled, and I've also used the example from https://github.com/rm-hull/luma.examples.  This is copyright (c) 2017-2020 Richard Hull & Contributors.
 
+PyLMS.  I reused from the server.py telnet cli wrapper, but had to extend it to include a read function to implement subscription.
+
+## License 
+
+In line with the reuse of luma.core, the software is available under MIT license
+
+The MIT License (MIT)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
