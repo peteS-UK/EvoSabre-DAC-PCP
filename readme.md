@@ -2,7 +2,7 @@
 
 ## Background
 
-This project began to allow me to control the second OLED screen on the excellent Audiophonics EvoSabre DAC when using PCP, since the supplied option was to use a very old version of DietPi.  However, overtime I realised that it was really 2 things.  Firstly, it was info on how to configure PCP to work with this DAC, but much more it was just a general program to display LMS information on an OLED display.  Since it uses the luma.core and luma.oled modules, it should support any device supported by luma.oled, which you can see at  https://luma-oled.readthedocs.io/en/latest/.  Currently, it's SPI only though.
+This project began to allow me to control the second OLED screen on the excellent Audiophonics EvoSabre DAC when using PCP, since the supplied option for LMS was to use a very old version of DietPi.  However, overtime I realised that the project was really 2 things.  Firstly, it was info on how to configure PCP to work with this DAC, but much more it was just a general program to display LMS information on an OLED display.  Since it uses the luma.core and luma.oled modules, it should support any device supported by luma.oled, which you can see at  https://luma-oled.readthedocs.io/en/latest/.  Currently, it's SPI only though, although it could certainly be made to work with  I2C displays as well I think.
 
 As such, there's now 2 sections to this document.  The first section involves the installation and configuration of the OLED scripts for PCP, and the second relates to configuration of PCP for the Audiophonics EvoSabre DAC, setup Infrared etc..
 
@@ -20,12 +20,13 @@ The purpose of the script is to display information from the LMS on the OLED.
 - Auto switching between day and night contrast, with contrast levels defined in external .cfg
 - Separate screen saver contrast setting, with screen saver contrast and screen saver delay in external .cfg
 - Display clock when player is stopped or off
+- With Audiophonics EvoSabre and RaspDAC Mini, correctly configured Infrared, using native Squeezelite IR control.
 
  
 
 ## Installing OLED Control for PCP
 
-OLED control for PCP requires various components, including some standard PCP extensions, such as Python 3, a dedicated extension for OLED, some python scripts and fonts.  You can install all of these by downloading and executing a setup script.
+The OLED control for PCP requires various components, including some standard PCP extensions, such as Python 3, a dedicated extension for OLED, some python scripts and fonts.  You can install all of these by downloading and executing a setup script.
 
 SSH onto your PCP then
 
@@ -37,9 +38,9 @@ chmod +x ./SetupOLED4.sh
 
 This will execute a script to download and install the OLED control script and components and add the startup command for the script to the USER_COMMAND_1 entry in Tweaks in PCP.  The setup script will detect your architecture and install the appropriate components, so you can use this on both 32 bit and 64 bit versions of PCP.
 
-During installation, you're asked for your OLED device.  For example, for EvoSabre, this is SSD1322 and for RaspDac Mini, it's SSD1306.  You can see the possible device names at https://luma-oled.readthedocs.io/en/latest/. 
+During installation, you're asked for your OLED device.  For example, for EvoSabre, this is SSD1322 and for RaspDAC Mini, it's SSD1306.  You can see the potentially supported device names at https://luma-oled.readthedocs.io/en/latest/. 
 
-When running, the program will take its configuration, including device control, font sizes, text locations etc. from a file, oled.cfg.  On installation, this file only has sections for SSD1322 and SSD1306 displays.  If you're using a different display, you'll need to create an appropriate section in the oled.cfg file, by copying the SSH1322 section, and adjusting accordingly. 
+When running, the program will take its configuration, including device control, font sizes, text locations etc. from a file, oled.cfg.  On installation, this file only has sections for SSD1322 and SSD1306 displays.  If you're using a different display, you'll need to create an appropriate section in the oled.cfg file, by copying the SSH1322 section, and adjusting accordingly.
 
 At the end of the installation, you'll be instructed to reboot your PCP
 
@@ -47,11 +48,13 @@ At the end of the installation, you'll be instructed to reboot your PCP
 pcp rb
 ```
 
-After installation, if you selected either SSD1322 or SSD1306, your device should begin to work on reboot.
+After installation, if you selected either SSD1322 or SSD1306, your device should begin to work on reboot.  For other devices, you'll need to modify oled.cfg, backup and reboot.
+
+If you do add other devices, please contribute them back to repo.
 
 ### Command Line Options
 
-The command to start the script for the display is added during installation to the USER_COMMAND_1 line in the Tweaks page on PCP.  By default, this will be
+The command to start the script for the display is added during installation to the USER_COMMAND_1 line in the Tweaks page on PCP.  By default, for an SSD1322, this will be 
 
 ```
 python3 /home/tc/lms_oled_4.py OLED=SSD1322
@@ -61,15 +64,15 @@ where OLED= specifies the OLED device name.  There are various other command lin
 
 #### OLED=
 
-This options is required and species the OLED device name, as per luma.oled devices.  The specified device name must match a section heading in oled.cfg.
+This options is required and specifies the OLED device name, as per luma.oled devices.  The specified device name must match a section heading in oled.cfg.
 
 #### LMSIP=
 
-The script will try to detect the LMS on the network.  However, if this doesn't work for some reason, you can override this discovery process by specifying the IP address of your LMS.
+The script will try to detect the LMS on the network.  However, if this doesn't work for some reason, or if you have multiple LMSs, you can override this discovery process by specifying the IP address of your LMS.
 
 #### MAC=
 
-The script will try to detect the MAC address of your PCP.  If this fails, you can override the MAC address.  If you choose to specify the MAC address in Squeezelite settings in PCP, you must also then specify the same MAC address here.
+The script will try to detect the MAC address of your PCP.  If this fails, you can override the MAC address.  Also, if you choose to specify the MAC address in Squeezelite settings in PCP, you must also then specify the same MAC address here.
 
 #### LOGFILE=
 
@@ -77,7 +80,7 @@ If you specify LOGFILE=Y, the logger output from the script will be written to p
 
 #### LOCATION=
 
-If you specify your latitude and longitude, the script will try to discover the sunrise and sunset times, and adjust the screen contrast accordingly.  The location must be 2 float numbers, separated by a comma e.g. for London, specify LOCATION=51.507351,-0.127758
+If you specify your latitude and longitude, the script will try to discover the sunrise and sunset times, and adjust the screen contrast automatically for day and night.  The location must be 2 float numbers, separated by a comma e.g. for London, specify LOCATION=51.507351,-0.127758
 
 ### OLED.CFG
 
@@ -90,7 +93,7 @@ spi_params={"port":0, "device":0, "gpio_DC":27, "gpio_RST":24}
 device_params={"rotate":0, "mode":"1"}
 ```
 
-If you make any changes to the oled.cfg file, you need to backup and reboot, either through the UI, or through SSH
+If you make any changes to the oled.cfg file, you need to backup and reboot, either through the PCP UI, or through SSH
 
 ```bash
 pcp bu
@@ -175,11 +178,11 @@ pcp rb
 
 I've leant heavily on other people's work to try and build this extension and script.  In particular, I'd like to reference
 
-Python2 Audiophonics script.  I started with the original python2 DietPi script, updated it to Python3, and then over time, I've removed pretty much all of the original code, but this was the genesis.
+**Python2 Audiophonics script**.  I started with the original python2 DietPi script, updated it to Python3, and then over time, I've removed pretty much all of the original code, but this was the genesis.
 
-luma.core and luma.oled and examples.   The OLED control is based on luma.core and luma.oled, and I've also used the example from https://github.com/rm-hull/luma.examples.  This is copyright (c) 2017-2020 Richard Hull & Contributors.
+**luma.core and luma.oled and examples**.   The OLED control is based on luma.core and luma.oled, and I've also used the example from https://github.com/rm-hull/luma.examples.  This is copyright (c) 2017-2020 Richard Hull & Contributors.
 
-PyLMS.  I reused from the server.py telnet cli wrapper, but had to extend it to include a read function to implement subscription.
+**PyLMS**.  I reused from the server.py telnet cli wrapper, but had to extend it to include a read function to implement subscription.
 
 Dawn & Dusk timings are loaded from https://sunrise-sunset.org/api
 
