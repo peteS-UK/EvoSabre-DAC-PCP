@@ -48,18 +48,17 @@ echo "$tczname" | sudo tee -a /etc/sysconfig/tcedir/onboot.lst 1>>/dev/null
 
 rm -rf $tmpdir
 
-#Check if oled.ini contains a section heading for the oled device
+#Check if oled.cfg contains a section heading for the oled device
 while read line; do
 	echo $line | grep -q $oleddevice
         if [ $? -eq 0 ]; then
         	section=$(echo $line)
         fi
-done < ~/oled.ini
+done < ~/oled.cfg
 
 if [ ${#section} = 0 ]; then
-    echo "oled.ini file contains no section for $oleddevice"
-    echo "Please edit oled.ini and update USER_COMMAND_1 manually in PCP"
-    oleddevice = "UNKNOWN"
+    echo "oled.cfg file contains no section for $oleddevice"
+    echo "Please edit oled.cfg to define your oled device, and backup and reboot after changes."
 fi
 
 #Check if USER_COMMAND_1 is set already
@@ -76,6 +75,23 @@ if [ "$UC_LINE" == "" ]; then
     # Command line is blank, so update it
     echo "Updating User Command"
     $(sed -i "s/USER_COMMAND_1=\"\"/USER_COMMAND_1=\"python3+%2Fhome%2Ftc%2Flms_oled_4.py+OLED%3D$oleddevice\"/" /usr/local/etc/pcp/pcp.cfg)
+fi
+
+while true; do
+    read -p "Enlarge SPI Buffer to display logo bitmap on startup?" yn
+    case $yn in
+        [Y]* ) break;;
+        [N]* ) break;;
+        * ) echo "Please answer Y or N";;
+    esac
+done
+
+if [ $yn == "Y" ]; then
+    mount /mnt/mmcblk0p1
+    read line < /mnt/mmcblk0p1/cmdline.txt
+    newline=$line" spidev.bufsiz=8192"
+    echo -n $newline > /mnt/mmcblk0p1/cmdline.txt
+    umount /mnt/mmcblk0p1
 fi
 
 echo "Backing up PCP"
