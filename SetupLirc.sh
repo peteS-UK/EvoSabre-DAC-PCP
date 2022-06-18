@@ -4,7 +4,7 @@ echo "Setup for lirc for EvoSabre & RaspDAC Mini on PCP"
 echo ""
 
 while true; do
-    read -p "Are you setting up EvoSabre or RASPDac Mini?" er
+    read -p "Are you setting up EvoSabre (E) or RASPDac Mini (R)?" er
     case $er in
         [E]* ) echo "Setup for EvoSabre OLED extension (E)"; dac="E";break;;
         [R]* ) echo "Setup for RASPDac Mini OLED extension (R)"; dac="R";break;;
@@ -31,11 +31,11 @@ fi
 
 echo "Downloading lirc file from GitHub"
 if [ $dac == "E" ]; then
-    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/.lircrc.evosabre -O ~/.lircrc
-    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lircd.conf.evosabre -O /usr/local/etc/lirc/lircd.conf
+    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lirc/evosabre/.lircrc -P ~
+    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lirc/evosabre/lircd.conf -P /usr/local/etc/lirc
 else
-    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/.lircrc.mini -O ~/.lircrc
-    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lircd.conf.mini -O /usr/local/etc/lirc/lircd.conf
+    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lirc/mini/.lircrc -O -P ~
+    wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lirc/mini/lircd.conf -P /usr/local/etc/lirc
 fi
 
 echo "Backing up PCP"

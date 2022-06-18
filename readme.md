@@ -40,7 +40,7 @@ This will execute a script to download and install the OLED control script and c
 
 During installation, you're asked for your OLED device.  For example, for EvoSabre, this is SSD1322 and for RaspDAC Mini, it's SSD1306.  You can see the potentially supported device names at https://luma-oled.readthedocs.io/en/latest/. 
 
-When running, the program will take its configuration, including device control, font sizes, text locations etc. from a file, oled.cfg.  On installation, this file only has sections for SSD1322 and SSD1306 displays.  If you're using a different display, you'll need to create an appropriate section in the oled.cfg file, by copying the SSH1322 section, and adjusting accordingly.
+When running, the program will take its configuration, including device control, font sizes, text locations etc. from a file, oled4pcp.cfg.  On installation, this file only has sections for SSD1322 and SSD1306 displays.  If you're using a different display, you'll need to create an appropriate section in the oled4pcp.cfg file, by copying the SSH1322 section, and adjusting accordingly.
 
 At the end of the installation, you'll be instructed to reboot your PCP
 
@@ -48,7 +48,7 @@ At the end of the installation, you'll be instructed to reboot your PCP
 pcp rb
 ```
 
-After installation, if you selected either SSD1322 or SSD1306, your device should begin to work on reboot.  For other devices, you'll need to modify oled.cfg, backup and reboot.
+After installation, if you selected either SSD1322 or SSD1306, your device should begin to work on reboot.  For other devices, you'll need to modify oled4pcp.cfg, backup and reboot.
 
 If you do add other devices, please contribute them back to repo.
 
@@ -57,14 +57,14 @@ If you do add other devices, please contribute them back to repo.
 The command to start the script for the display is added during installation to the USER_COMMAND_1 line in the Tweaks page on PCP.  By default, for an SSD1322, this will be 
 
 ```
-python3 /home/tc/lms_oled_4.py OLED=SSD1322
+python3 /home/tc/oled4pcp_4.py OLED=SSD1322
 ```
 
 where OLED= specifies the OLED device name.  There are various other command line options you can specify by editing this user command.
 
 #### OLED=
 
-This options is required and specifies the OLED device name, as per luma.oled devices.  The specified device name must match a section heading in oled.cfg.
+This options is required and specifies the OLED device name, as per luma.oled devices.  The specified device name must match a section heading in oled4pcp.
 
 #### LMSIP=
 
@@ -76,24 +76,24 @@ The script will try to detect the MAC address of your PCP.  If this fails, you c
 
 #### LOGFILE=
 
-If you specify LOGFILE=Y, the logger output from the script will be written to pcpoled.log, rather than just to standard out.
+If you specify LOGFILE=Y, the logger output from the script will be written to /var/log/oled4pcp.log, rather than just to standard out.
 
 #### LOCATION=
 
 If you specify your latitude and longitude, the script will try to discover the sunrise and sunset times, and adjust the screen contrast automatically for day and night.  The location must be 2 float numbers, separated by a comma e.g. for London, specify LOCATION=51.507351,-0.127758
 
-### OLED.CFG
+### OLED4PCP.CFG
 
-The oled.cfg file contains font size, screen locations etc.  There must be a section heading matching the name of the device specified in the OLED= parameter e.g. [SSD1322].
+The oled4pcp.cfg file contains font size, screen locations etc.  There must be a section heading matching the name of the device specified in the OLED= parameter e.g. [SSD1322].
 
-The oled.cfg contains two entries specific to the OLED device.  For the SSD1322, these are
+The oled4pcp.cfg contains two entries specific to the OLED device.  For the SSD1322, these are
 
 ```
 spi_params={"port":0, "device":0, "gpio_DC":27, "gpio_RST":24}
 device_params={"rotate":0, "mode":"1"}
 ```
 
-If you make any changes to the oled.cfg file, you need to backup and reboot, either through the PCP UI, or through SSH
+If you make any changes to the oled4pcp.cfg file, you need to backup and reboot, either through the PCP UI, or through SSH
 
 ```bash
 pcp bu
