@@ -117,7 +117,7 @@ def get_digit(number, n):
 
 # Method to read config file settings
 def read_config():
-	config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oled.cfg'))
+	config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oled4pcp.cfg'))
 	config = configparser.ConfigParser()
 	config.read(config_path)
 	return config

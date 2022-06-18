@@ -84,7 +84,8 @@ import helper
 if helper.process_params("LOGFILE") == "Y" :
 	# create log file handler
 	logger.info("Outputting to log file")
-	file_handler = logging.FileHandler('pcpoled.log', mode='a')
+	#file_handler = logging.FileHandler(os.path.abspath(os.path.join(os.path.dirname(__file__), 'pcpoled.log')), mode='a')
+	file_handler = logging.FileHandler('/var/log/oled4pcp.log', mode='a')
 	file_handler.setFormatter(logging.Formatter(File_Log_Format))
 	logger.addHandler(file_handler)
 
