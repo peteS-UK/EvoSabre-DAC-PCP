@@ -546,7 +546,7 @@ try:
 				dura_sec = info_duration%60
 				dura_min = "%2d" %dura_min
 				dura_sec = "%02d" %dura_sec
-				dura_val = "/ " + str(dura_min)+":"+str(dura_sec)
+				dura_val = "/" + str(dura_min)+":"+str(dura_sec)
 			else : 
 				dura_val = ""
 
