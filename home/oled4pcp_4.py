@@ -704,8 +704,8 @@ try:
 				if song_data.mode == "pause": 
 					draw.text(display.pause_xy, text=pause_logo, font=font_logo, fill="white")
 				else:
-					draw.text(display.title_line3_time_xy, time_val, font=font_info, fill="white")
-					draw.text(display.title_line3_duration_xy, dura_val, font=font_info, fill="white")
+					draw.text(display.title_line3_time_xy, time_val+dura_val, font=font_info, fill="white")
+#					draw.text(display.title_line3_duration_xy, dura_val, font=font_info, fill="white")
 				
 				draw.rectangle((display.title_timebar[0],
 					display.title_timebar[1],
