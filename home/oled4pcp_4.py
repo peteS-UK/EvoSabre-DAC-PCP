@@ -305,13 +305,13 @@ def decode_metadata(json):
 	try:
 		song_data.title = json['playlist_loop'][0]['title']
 	except:
-		song_data.title = json['playlist_loop'][0]['title']
+		song_data.title = ""
 	
 	try:
 		song_data.album = json['playlist_loop'][0]['album']
 	except:
 		song_data.album = ""
-		
+
 	if song_data.album == "":
 		if song_data.remote_title != "" :
 			song_data.album = song_data.remote_title
