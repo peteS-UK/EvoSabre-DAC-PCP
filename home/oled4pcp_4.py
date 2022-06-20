@@ -570,7 +570,7 @@ try:
 			daynight = helper.daynight(datetime.now(tz=timezone.utc), lat, lng)
 			if daynight_store != daynight:
 				# We've changed day to night or back
-				logger.info("Switching Day/night Contrast")
+				logger.debug("Switching Day/night Contrast")
 				daynight_store = daynight
 				helper.set_contrast(daynight, contrast_day, contrast_night, device)
 

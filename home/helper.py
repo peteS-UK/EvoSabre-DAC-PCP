@@ -59,11 +59,11 @@ def daynight(date, lat, lng):
 	try:
 		if sunrise.strftime("%d") != date.strftime("%d") :			
 			# date is from a different day to the last sunrise data, so refresh
-			logger.info("Getting new dusk/dawn data for new day")
+			logger.debug("Getting new dusk/dawn data for new day")
 			sunrise, sunset = get_sunrise_data(lat, lng)
 	except:
 		# No sunrise data currently
-		logger.info("Dusk/Dawn data not set.  Getting new data")
+		logger.debug("Dusk/Dawn data not set.  Getting new data")
 		sunrise, sunset = get_sunrise_data(lat, lng)
 
 	if sunrise == "unknown":
@@ -87,15 +87,15 @@ def set_contrast(daynight, contrast_day, contrast_night, device):
 			contrast_night = 255
 
 		if  daynight == "day":
-			logger.info("Setting daytime contrast: %s",contrast_day)
+			logger.debug("Setting daytime contrast: %s",contrast_day)
 			contrast = contrast_day
 
 		elif daynight == "night":
-			logger.info("Setting nighttime contrast: %s",contrast_night)
+			logger.debug("Setting nighttime contrast: %s",contrast_night)
 			contrast = contrast_night
 
 		else:
-			logger.info("Setting default contrast: %s",contrast_day)
+			logger.debug("Setting default contrast: %s",contrast_day)
 			contrast = contrast_day
 	
 		device.contrast(contrast)
