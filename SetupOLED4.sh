@@ -12,19 +12,21 @@ while true; do
     fi
 done
 
-tmp=$(mktemp)
-tmpdir=$(mktemp -d)
-
 echo "Installing python3 and freetype extension"
 tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
 
-echo "Downloading extension from GitHub"
-wget -q https://github.com/peteS-UK/EvoSabre-DAC-PCP/releases/download/oled4pcp/oled4pcp_4.tar.gz -O $tmp
+if [ "$(uname -m)" = "aarch64" ]; then
+    echo "Installing 64 bit extension"
+    tczname="oled4pcp_4-py38-64-deps.tcz"
 
-echo "Unpacking Files"
-tar -xzf $tmp -C $tmpdir
+else
+    echo "Installing 32 bit extension"
+    tczname="oled4pcp_4-py38-deps.tcz"
+fi
 
-rm $tmp
+sudo wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/tcz/$tczname -O /etc/sysconfig/tcedir/optional/$tczname
+
+echo "$tczname" | sudo tee -a /etc/sysconfig/tcedir/onboot.lst 1>>/dev/null
 
 mkdir ~/fonts 2>>/dev/null
 
@@ -38,19 +40,6 @@ wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fo
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/fontawesome-webfont.ttf -P ~/fonts
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/msyh.ttf -P ~/fonts
 
-
-if [ "$(uname -m)" = "aarch64" ]; then
-    echo "Installing 64 bit extension"
-    tczname="oled4pcp_4-py38-64-deps.tcz"
-else
-    echo "Installing 32 bit extension"
-    tczname="oled4pcp_4-py38-deps.tcz"
-fi
-
-sudo cp -p "$tmpdir/oled4pcp_4/$tczname" /etc/sysconfig/tcedir/optional 1>>/dev/null
-echo "$tczname" | sudo tee -a /etc/sysconfig/tcedir/onboot.lst 1>>/dev/null
-
-rm -rf $tmpdir
 
 #Check if oled.cfg contains a section heading for the oled device
 while read line; do
@@ -90,13 +79,37 @@ while true; do
     esac
 done
 
+mount /mnt/mmcblk0p1
+
 if [ $yn == "Y" ]; then
-    mount /mnt/mmcblk0p1
+
     read line < /mnt/mmcblk0p1/cmdline.txt
     newline=$line" spidev.bufsiz=8192"
     echo -n $newline > /mnt/mmcblk0p1/cmdline.txt
-    umount /mnt/mmcblk0p1
 fi
+
+# Does config.txt already contain spi
+while read line; do
+    cleanline=$(echo $line  | sed 's/[[:space:]]*//g')
+    echo $cleanline | grep -q spi=
+        if [ $? -eq 0 ]; then
+            echo $cleanline | grep -q dtparam
+            if [ $? -eq 0 ]; then
+  	            spi=$(echo $line)
+            fi
+        fi
+done < /mnt/mmcblk0p1/config.txt
+
+if [ "$spi" == "" ]; then
+# no entry for SPI, so add one
+    echo "Adding dtparam=spi=on to config.txt" 
+    mv /mnt/mmcblk0p1/config.txt /mnt/mmcblk0p1/config.sav
+    awk '/#---Begin-Custom-/ { print; print "dtparam=spi=on"; next }1' /mnt/mmcblk0p1/config.sav >> /mnt/mmcblk0p1/config.txt
+fi
+
+umount /mnt/mmcblk0p1
+
+
 
 echo "Backing up PCP"
 pcp bu  1>>/dev/null
