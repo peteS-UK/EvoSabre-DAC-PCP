@@ -39,8 +39,15 @@ logging.getLogger('REQUESTS').setLevel(logging.ERROR)
 
 def get_sunrise_data(lat, lng):
 
-	url = "https://api.sunrise-sunset.org/json?lat=" + str(lat) + "&lng=" + str(lng) + "&formatted=0"
-	response = requests.get(url).json()
+	try:
+		try:
+			url = "https://api.sunrise-sunset.org/json?lat=" + str(lat) + "&lng=" + str(lng) + "&formatted=0"
+			response = requests.get(url).json()
+		except:
+			url = "http://api.sunrise-sunset.org/json?lat=" + str(lat) + "&lng=" + str(lng) + "&formatted=0"
+			response = requests.get(url).json()
+	except:
+		return "unknown","unknown"
 
 	status = response['status']
 	if status != "OK":
@@ -61,10 +68,13 @@ def daynight(date, lat, lng):
 			# date is from a different day to the last sunrise data, so refresh
 			logger.debug("Getting new dusk/dawn data for new day")
 			sunrise, sunset = get_sunrise_data(lat, lng)
+			logger.debug("Sunrise: %s, Sunset: %s",sunrise, sunset)
 	except:
 		# No sunrise data currently
 		logger.debug("Dusk/Dawn data not set.  Getting new data")
 		sunrise, sunset = get_sunrise_data(lat, lng)
+		logger.debug("Sunrise: %s, Sunset: %s",sunrise, sunset)
+
 
 	if sunrise == "unknown":
 		return "unknown"
