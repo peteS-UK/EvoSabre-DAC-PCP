@@ -52,7 +52,7 @@ Log_Format = "%(levelname)s	%(message)s"
 logger = logging.getLogger("oled")
  
 # Setting the threshold of logger
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # ignore REQUESTS debug messages
 logging.getLogger('REQUESTS').setLevel(logging.ERROR)
@@ -60,11 +60,10 @@ logging.getLogger('REQUESTS').setLevel(logging.ERROR)
 # create console handler
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter(Log_Format))
+stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 
-
 logger.info("PCP OLED Starting")
-
 
 try :
 	import requests
@@ -81,12 +80,15 @@ from luma.core.image_composition import ImageComposition, ComposableImage
 
 import helper
 
-if helper.process_params("LOGFILE") == "Y" :
+if (helper.process_params("LOGFILE") == "Y" or helper.process_params("LOGFILE") == "INFO" or helper.process_params("LOGFILE") == "DEBUG" ):
 	# create log file handler
 	logger.info("Outputting to log file")
 	#file_handler = logging.FileHandler(os.path.abspath(os.path.join(os.path.dirname(__file__), 'pcpoled.log')), mode='a')
 	file_handler = logging.FileHandler('/var/log/oled4pcp.log', mode='a')
 	file_handler.setFormatter(logging.Formatter(File_Log_Format))
+	if helper.process_params("LOGFILE") == "DEBUG":
+		logger.info("Setting File Logging to DEBUG")
+		file_handler.setLevel(logging.DEBUG)
 	logger.addHandler(file_handler)
 
 # Has the OLED device been specified 

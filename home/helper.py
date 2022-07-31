@@ -31,7 +31,7 @@ Log_Format = "%(levelname)s %(asctime)s - %(message)s"
 logger = logging.getLogger("oled")
  
 # Setting the threshold of logger
-logger.setLevel(logging.INFO)
+#logger.setLevel(logging.INFO)
 
 # ignore REQUESTS debug messages
 logging.getLogger('REQUESTS').setLevel(logging.ERROR)
