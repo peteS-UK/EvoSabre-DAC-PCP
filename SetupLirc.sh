@@ -38,6 +38,7 @@ else
     wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/lirc/mini/lircd.conf -O /usr/local/etc/lirc/lircd.conf
 fi
 
+
 echo "Backing up PCP"
 pcp bu  1>>/dev/null
 
