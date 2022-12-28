@@ -64,6 +64,7 @@ stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 
 logger.info("PCP OLED Starting")
+logger.debug("debug 1")
 
 try :
 	import requests
@@ -90,6 +91,8 @@ if (helper.process_params("LOGFILE") == "Y" or helper.process_params("LOGFILE") 
 		logger.info("Setting File Logging to DEBUG")
 		file_handler.setLevel(logging.DEBUG)
 	logger.addHandler(file_handler)
+
+logger.debug("debug 2")
 
 # Has the OLED device been specified 
 if len(helper.process_params("OLED")) == 0 :
@@ -119,7 +122,6 @@ display.title_artist_line1_y = int(config[oled]['title_artist_line1_y'])
 display.title_artist_line2_y = int(config[oled]['title_artist_line2_y'])
 display.pause_xy = helper.parse_int_tuple(config[oled]['pause_xy'])
 display.title_line3_time_xy = helper.parse_int_tuple(config[oled]['title_line3_time_xy'])
-#display.title_line3_duration_xy = helper.parse_int_tuple(config[oled]['title_line3_duration_xy'])
 display.title_line3_volume_icon_xy = helper.parse_int_tuple(config[oled]['title_line3_volume_icon_xy'])
 display.title_line3_volume_val_xy = helper.parse_int_tuple(config[oled]['title_line3_volume_val_xy'])
 display.title_timebar = helper.parse_int_tuple(config[oled]['title_timebar'])
@@ -143,6 +145,13 @@ display.info_font_size = int(config[oled]['info_font_size'])
 display.time_large_font_size = int(config[oled]['time_large_font_size'])
 display.playing_polling_interval = int(config[oled]['playing_polling_interval'])
 display.stopped_polling_interval = int(config[oled]['stopped_polling_interval'])
+display.font_metadata=config[oled]['font_metadata']
+display.font_volume=config[oled]['font_volume']
+display.font_info=config[oled]['font_info']
+display.font_connecting=config[oled]['font_connecting']
+display.font_audiophonics=config[oled]['font_audiophonics']
+display.font_logo=config[oled]['font_logo']
+display.font_time=config[oled]['font_time']
 
 song_data = helper.SongData()
 
@@ -186,16 +195,16 @@ except:
 	logger.error("Unable to get ScreenSave CONTRAST")
 
 
+font_title_artist_line_1	= helper.make_font(display.font_metadata, display.title_artist_line_1_font_size)
+font_title_artist_line_2	= helper.make_font(display.font_metadata, display.title_artist_line_2_font_size)
+font_vol_large			= helper.make_font(display.font_volume, display.vol_large_font_size)
+font_info				= helper.make_font(display.font_info, display.info_font_size)
+font_connecting			= helper.make_font(display.font_connecting, display.connecting_font_size)
 
-font_title_artist_line_1	= helper.make_font('msyh.ttf', display.title_artist_line_1_font_size)
-font_title_artist_line_2	= helper.make_font('msyh.ttf', display.title_artist_line_2_font_size)
-font_vol_large			= helper.make_font('msyh.ttf', display.vol_large_font_size)
-font_info				= helper.make_font('msyh.ttf', display.info_font_size)
-font_connecting			= helper.make_font('msyh.ttf', display.connecting_font_size)
-font_audiophonics_logo	= helper.make_font('arial.ttf', display.audiophonics_logo_font_size)
-font_time_large			= helper.make_font('arial.ttf', display.time_large_font_size)
-font_logo				= helper.make_font("fontawesome-webfont.ttf", display.logo_font_size)
-font_logo_large			= helper.make_font("fontawesome-webfont.ttf", display.logo_large_font_size)
+font_audiophonics_logo	= helper.make_font(display.font_audiophonics, display.audiophonics_logo_font_size)
+font_time_large			= helper.make_font(display.font_time, display.time_large_font_size)
+font_logo				= helper.make_font(display.font_logo, display.logo_font_size)
+font_logo_large			= helper.make_font(display.font_logo, display.logo_large_font_size)
 
 wifi_logo			= "\uf1eb"
 link_logo			= "\uf0e8"
@@ -538,7 +547,7 @@ try:
 				logger.debug("No bitrate to remove")
 
 			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_title_artist_line_2).image, 
-					position=(x_bitrate_pos, display.title_artist_line2_y))
+					position=(0, display.title_artist_line2_y))
 			
 			scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
 
@@ -665,7 +674,7 @@ try:
 				ci_play_line_2 = ComposableImage(helper.TextImage(device, 
 					song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, 
 					font=font_title_artist_line_2).image, 
-					position=(x_bitrate_pos, display.title_artist_line2_y))
+					position=(0, display.title_artist_line2_y))
 								
 				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
 				scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
@@ -707,8 +716,7 @@ try:
 					draw.text(display.pause_xy, text=pause_logo, font=font_logo, fill="white")
 				else:
 					draw.text(display.title_line3_time_xy, time_val+dura_val, font=font_info, fill="white")
-#					draw.text(display.title_line3_duration_xy, dura_val, font=font_info, fill="white")
-				
+#				
 				draw.rectangle((display.title_timebar[0],
 					display.title_timebar[1],
 					time_bar,

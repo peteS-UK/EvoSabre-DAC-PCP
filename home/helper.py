@@ -292,7 +292,6 @@ class Display:
 	title_artist_line2_y = 0
 	pause_xy = (0, 0)
 	title_line3_time_xy = (0, 0)
-	title_line3_duration_xy = (0,0)
 	title_line3_volume_icon_xy = (0,0)
 	title_line3_volume_val_xy = (0,0)
 	title_timebar = (0,0,0,0)
@@ -317,6 +316,15 @@ class Display:
 	time_large_font_size = 0
 	stopped_polling_interval = 0
 	playing_polling_interval = 0
+	font_metadata = ""
+	font_volume = ""
+	font_info = ""
+	font_connecting = ""
+	font_audiophonics = ""
+	font_logo = ""
+	font_time=""
+
+
 
 class LMSTelnetServer(object):
 

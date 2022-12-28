@@ -38,7 +38,7 @@ wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/lo
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/logo_128_64.bmp -P ~
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/arial.ttf -P ~/fonts
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/fontawesome-webfont.ttf -P ~/fonts
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/msyh.ttf -P ~/fonts
+#wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/msyh.ttf -P ~/fonts
 
 
 #Check if oled.cfg contains a section heading for the oled device
