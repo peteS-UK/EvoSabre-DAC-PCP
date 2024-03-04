@@ -79,7 +79,7 @@ while true; do
     esac
 done
 
-if [ $si == "S"]; then
+if [ $si == "S" ]; then
 
     # SPI device.  No setup needed for I2C as it's already enabled in PCP
 
