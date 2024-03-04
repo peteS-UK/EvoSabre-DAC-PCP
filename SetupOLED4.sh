@@ -71,45 +71,58 @@ if [ "$UC_LINE" == "" ]; then
 fi
 
 while true; do
-    read -p "Enlarge SPI Buffer to display logo bitmap on startup?" yn
-    case $yn in
-        [Y]* ) break;;
-        [N]* ) break;;
-        * ) echo "Please answer Y or N";;
+    read -p "Is OLED interface SPI (S) or I2C (I)?" si
+    case $si in
+        [S]* ) break;;
+        [I]* ) break;;
+        * ) echo "Please answer S or I";;
     esac
 done
 
-mount /mnt/mmcblk0p1
+if [ $si == "S"];
 
-if [ $yn == "Y" ]; then
+    # SPI device.  No setup needed for I2C as it's already enabled in PCP
 
-    read line < /mnt/mmcblk0p1/cmdline.txt
-    newline=$line" spidev.bufsiz=8192"
-    echo -n $newline > /mnt/mmcblk0p1/cmdline.txt
-fi
+    while true; do
+        read -p "Enlarge SPI Buffer to display logo bitmap on startup?" yn
+        case $yn in
+            [Y]* ) break;;
+            [N]* ) break;;
+            * ) echo "Please answer Y or N";;
+        esac
+    done
 
-# Does config.txt already contain spi
-while read line; do
-    cleanline=$(echo $line  | sed 's/[[:space:]]*//g')
-    echo $cleanline | grep -q spi=
-        if [ $? -eq 0 ]; then
-            echo $cleanline | grep -q dtparam
+    mount /mnt/mmcblk0p1
+
+    if [ $yn == "Y" ]; then
+
+        read line < /mnt/mmcblk0p1/cmdline.txt
+        newline=$line" spidev.bufsiz=8192"
+        echo -n $newline > /mnt/mmcblk0p1/cmdline.txt
+    fi
+
+    # Does config.txt already contain spi
+    while read line; do
+        cleanline=$(echo $line  | sed 's/[[:space:]]*//g')
+        echo $cleanline | grep -q spi=
             if [ $? -eq 0 ]; then
-  	            spi=$(echo $line)
+                echo $cleanline | grep -q dtparam
+                if [ $? -eq 0 ]; then
+                    spi=$(echo $line)
+                fi
             fi
-        fi
-done < /mnt/mmcblk0p1/config.txt
+    done < /mnt/mmcblk0p1/config.txt
 
-if [ "$spi" == "" ]; then
-# no entry for SPI, so add one
-    echo "Adding dtparam=spi=on to config.txt" 
-    mv /mnt/mmcblk0p1/config.txt /mnt/mmcblk0p1/config.sav
-    awk '/#---Begin-Custom-/ { print; print "dtparam=spi=on"; next }1' /mnt/mmcblk0p1/config.sav >> /mnt/mmcblk0p1/config.txt
+    if [ "$spi" == "" ]; then
+    # no entry for SPI, so add one
+        echo "Adding dtparam=spi=on to config.txt" 
+        mv /mnt/mmcblk0p1/config.txt /mnt/mmcblk0p1/config.sav
+        awk '/#---Begin-Custom-/ { print; print "dtparam=spi=on"; next }1' /mnt/mmcblk0p1/config.sav >> /mnt/mmcblk0p1/config.txt
+    fi
+
+    umount /mnt/mmcblk0p1
+
 fi
-
-umount /mnt/mmcblk0p1
-
-
 
 echo "Backing up PCP"
 pcp bu  1>>/dev/null
