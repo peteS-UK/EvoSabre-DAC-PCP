@@ -28,6 +28,7 @@
 # Read from config file for oled setup
 # Change to composed images and updating scrolling design
 # Auto switch contrast at dawn and dusk, using data from https://sunrise-sunset.org/api
+# Add I2C support
 
 
 
@@ -75,7 +76,7 @@ except :
 
 from PIL import Image
 
-from luma.core.interface.serial import spi
+from luma.core.interface.serial import spi, i2c
 from luma.core.render import canvas
 from luma.core.image_composition import ImageComposition, ComposableImage
 
@@ -111,10 +112,11 @@ sections = config.sections()
 
 # Does the ini contain settings for the specified OLED
 if oled not in sections :
-	logger.critical("OLED device not defined in oled.cfg")
+	logger.critical("OLED device not defined in oled4pcp.cfg")
 	exit()
 
 display.type=config[oled]['type']
+display.serial_interface=config[oled]['serial_interface']
 display.vol_screen_icon_xy = helper.parse_int_tuple(config[oled]['vol_screen_icon_xy'])
 display.vol_screen_value_y = int(config[oled]['vol_screen_value_y'])
 display.vol_screen_rect = helper.parse_int_tuple(config[oled]['vol_screen_rect'])
@@ -131,10 +133,11 @@ display.time_xy = helper.parse_int_tuple(config[oled]['time_xy'])
 display.time_vol_icon_xy = helper.parse_int_tuple(config[oled]['time_vol_icon_xy'])
 display.time_vol_val_xy = helper.parse_int_tuple(config[oled]['time_vol_val_xy'])
 display.scroll_speed = int(config[oled]['scroll_speed'])
-display.spi_params = config[oled]['spi_params']
+display.serial_params = config[oled]['serial_params']
 display.device_params = config[oled]['device_params']
 display.screensave_timeout = int(config[oled]['screensave_timeout'])
 display.audiophonics_logo_font_size = int(config[oled]['audiophonics_logo_font_size'])
+display.banner_text = int(config[oled]['banner_text'])
 display.connecting_font_size = int(config[oled]['connecting_font_size'])
 display.vol_large_font_size = int(config[oled]['vol_large_font_size'])
 display.logo_font_size = int(config[oled]['logo_font_size'])
@@ -158,7 +161,14 @@ song_data = helper.SongData()
 oled_module = importlib.import_module("luma.oled.device")
 oled_device = getattr(oled_module,display.type)
 
-serial = spi(**json.loads(display.spi_params))
+if display.serial_interface == "spi":
+	serial = spi(**json.loads(display.serial_params))
+elif display.serial_interface == "i2c": 
+	serial = i2c(**json.loads(display.serial_params))
+else:
+	logger.critical("Unknown serial_interface in oled4pcp.cfg")
+	exit()
+
 device = oled_device(serial, **json.loads(display.device_params))
 
 del oled_module
@@ -410,7 +420,7 @@ if bufsize >= 8192:
 
 else:
 	with canvas(device) as draw:
-		helper.draw_multiline_text_centered(draw,"Audiophonics",font_audiophonics_logo, display)
+		helper.draw_multiline_text_centered(draw,display.banner_text,font_audiophonics_logo, display)
 
 time.sleep(2)
 

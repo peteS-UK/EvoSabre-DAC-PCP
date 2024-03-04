@@ -284,6 +284,7 @@ class SongData:
 
 class Display:
 	type=""
+	serial_interface=""
 	logo_xy = (0,0)
 	vol_screen_icon_xy = (0,0)
 	vol_screen_value_y = 0
@@ -303,9 +304,10 @@ class Display:
 	scroll_unit = 0
 	width = 0
 	height = 0
-	spi_params = ""
+	serial_params = ""
 	screensaveS_timeout = 0
 	audiophonics_logo_font_size = 0
+	banner_text = ""
 	connecting_font_size = 0
 	vol_large_font_size = 0
 	logo_font_size = 0
