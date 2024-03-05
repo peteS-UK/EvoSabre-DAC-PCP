@@ -35,6 +35,7 @@ wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/ol
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/helper.py -P ~
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/oled4pcp.cfg -P ~
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/logo_256_64.bmp -P ~
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_256_64.bmp -P ~
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/logo_128_64.bmp -P ~
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/arial.ttf -P ~/fonts
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/fontawesome-webfont.ttf -P ~/fonts
