@@ -306,8 +306,9 @@ class Display:
 	height = 0
 	serial_params = ""
 	screensaveS_timeout = 0
-	audiophonics_logo_font_size = 0
+	banner_logo_font_size = 0
 	banner_text = ""
+	logo_file_name = ""
 	connecting_font_size = 0
 	vol_large_font_size = 0
 	logo_font_size = 0

@@ -136,8 +136,9 @@ display.scroll_speed = int(config[oled]['scroll_speed'])
 display.serial_params = config[oled]['serial_params']
 display.device_params = config[oled]['device_params']
 display.screensave_timeout = int(config[oled]['screensave_timeout'])
-display.audiophonics_logo_font_size = int(config[oled]['audiophonics_logo_font_size'])
+display.banner_logo_font_size = int(config[oled]['banner_logo_font_size'])
 display.banner_text = config[oled]['banner_text']
+display.logo_file_name = config[oled]['logo_file_name']
 display.connecting_font_size = int(config[oled]['connecting_font_size'])
 display.vol_large_font_size = int(config[oled]['vol_large_font_size'])
 display.logo_font_size = int(config[oled]['logo_font_size'])
@@ -211,7 +212,7 @@ font_vol_large			= helper.make_font(display.font_volume, display.vol_large_font_
 font_info				= helper.make_font(display.font_info, display.info_font_size)
 font_connecting			= helper.make_font(display.font_connecting, display.connecting_font_size)
 
-font_audiophonics_logo	= helper.make_font(display.font_audiophonics, display.audiophonics_logo_font_size)
+font_banner_logo		= helper.make_font(display.font_audiophonics, display.banner_logo_font_size)
 font_time_large			= helper.make_font(display.font_time, display.time_large_font_size)
 font_logo				= helper.make_font(display.font_logo, display.logo_font_size)
 font_logo_large			= helper.make_font(display.font_logo, display.logo_large_font_size)
@@ -410,7 +411,7 @@ except:
 
 if bufsize >= 8192:
 
-	logo_name = "logo_"+str(device.width)+"_"+str(device.height)+".bmp"
+	logo_name = display.logo_file_name
 	logo_path = os.path.abspath(os.path.join(
 	os.path.dirname(__file__), logo_name))
 	
@@ -420,7 +421,7 @@ if bufsize >= 8192:
 
 else:
 	with canvas(device) as draw:
-		helper.draw_multiline_text_centered(draw,display.banner_text,font_audiophonics_logo, display)
+		helper.draw_multiline_text_centered(draw,display.banner_text,font_banner_logo, display)
 
 time.sleep(2)
 
