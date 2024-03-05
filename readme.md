@@ -2,7 +2,7 @@
 
 ## Background
 
-This project began to allow me to control the second OLED screen on the excellent Audiophonics EvoSabre DAC when using PCP, since the supplied option for LMS was to use a very old version of DietPi.  However, overtime I realised that the project was really 2 things.  Firstly, it was info on how to configure PCP to work with this DAC, but much more it was just a general program to display LMS information on an OLED display.  Since it uses the luma.core and luma.oled modules, it should support any device supported by luma.oled, which you can see at  https://luma-oled.readthedocs.io/en/latest/.  Currently, it's SPI only though, although it could certainly be made to work with  I2C displays as well I think.
+This project began to allow me to control the second OLED screen on the excellent Audiophonics EvoSabre DAC when using PCP, since the supplied option for LMS was to use a very old version of DietPi.  However, overtime I realised that the project was really 2 things.  Firstly, it was info on how to configure PCP to work with this DAC, but much more it was just a general program to display LMS information on an OLED display.  Since it uses the luma.core and luma.oled modules, it should support any device supported by luma.oled, which you can see at  https://luma-oled.readthedocs.io/en/latest/.  You can specify SPI or I2C interfaces by editing the configuration for your OLED in the oled4pcp.cfg.
 
 As such, there's now 2 sections to this document.  The first section involves the installation and configuration of the OLED scripts for PCP, and the second relates to configuration of PCP for the Audiophonics EvoSabre DAC, setup Infrared etc..
 
@@ -26,7 +26,7 @@ The purpose of the script is to display information from the LMS on the OLED.
 
 ## Installing OLED Control for PCP
 
-The OLED control for PCP requires various components, including some standard PCP extensions, such as Python 3, a dedicated extension for OLED, some python scripts and fonts.  You can install all of these by downloading and executing a setup script.
+The OLED control for PCP requires various components, including some standard PCP extensions, such as Python 3, a dedicated extension for OLED, some python scripts and fonts.  Before installing these extensions, you're likely to need to expand the file system on your SD card.  This can be done through the PCP interface under Main Page, Additional Functions, Resize FS.  Once you've expanded the file system, you can install all of these by downloading and executing a setup script.
 
 SSH onto your PCP then
 
@@ -89,7 +89,7 @@ The oled4pcp.cfg file contains font size, screen locations etc.  There must be a
 The oled4pcp.cfg contains two entries specific to the OLED device.  For the SSD1322, these are
 
 ```
-spi_params={"port":0, "device":0, "gpio_DC":27, "gpio_RST":24}
+serial_params={"port":0, "device":0, "gpio_DC":27, "gpio_RST":24}
 device_params={"rotate":0, "mode":"1"}
 ```
 
