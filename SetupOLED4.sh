@@ -75,9 +75,10 @@ mkdir ~/.oled4pcp/fonts 2>>/dev/null
 echo "Moving Files to home"
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/oled4pcp_4.py -P ~/.oled4pcp
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/helper.py -P ~/.oled4pcp
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/logo_256_64.bmp -P ~/.oled4pcp
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/audiophonics_logo_256_64.bmp -P ~/.oled4pcp
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_256_64.bmp -P ~/.oled4pcp
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/logo_128_64.bmp -P ~/.oled4pcp
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/audiophonics_logo_128_64.bmp -P ~/.oled4pcp
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_128_64.bmp -P ~/.oled4pcp
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/arial.ttf -P ~/.oled4pcp/fonts
 wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/fontawesome-webfont.ttf -P ~/.oled4pcp/fonts
 
