@@ -36,7 +36,7 @@ chmod +x ./SetupOLED4.sh
 ./SetupOLED4.sh
 ```
 
-This will execute a script to download and install the OLED control script and components and add the startup command for the script to the USER_COMMAND_1 entry in Tweaks in PCP.  The setup script will detect your architecture and install the appropriate components, so you can use this on both 32 bit and 64 bit versions of PCP.
+This will execute a script to download and install the OLED control script and components and add the startup command for the script to the USER_COMMAND_1 entry in Tweaks in PCP.  The setup script will detect your architecture and install the appropriate components, so you can use this on both 32 bit and 64 bit versions of PCP.  All installation files will be placed under ~/.oled4pcp directory.
 
 During installation, you're asked for your OLED device.  For example, for EvoSabre, this is SSD1322 and for RaspDAC Mini, it's SSD1306.  You can see the potentially supported device names at https://luma-oled.readthedocs.io/en/latest/.
 
