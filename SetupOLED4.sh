@@ -11,12 +11,14 @@ echo "What OLED device are you configuring?  Currently defined sections in oled4
 
 while read line; do
 	echo $line | grep -q "\["
-        if [ $? -eq 0 ]; then
-        	echo $line  | sed 's/[[]//g' | sed 's/[]]//g'
+        if [ $? -eq 0  ]; then
+            if [ $line != "[CONFIG]" ]; then
+        	    echo $line  | sed 's/[[]//g' | sed 's/[]]//g'
+            fi
         fi
 done < ~/.oled4pcp/oled4pcp.cfg
 
-echo $'\n'
+echo $'\n'  
 
 while true; do
     read -p "Please choose your oled, or enter a new name if you want to create a new section : " oleddevice
@@ -39,6 +41,17 @@ if [ ${#section} = 0 ]; then
     echo $'\n'"oled4pcp.cfg file contains no section for $oleddevice"
     echo "Please edit oled4pcp.cfg to define your oled device, and backup and reboot after changes."
 fi
+
+
+# Update oled4pcp.cfg with new oled section name
+while read line; do
+    echo $line | grep -q oled_section
+        if [ $? -eq 0 ]; then
+  	        OS=$(echo $line)
+        fi
+done < ~/.oled4pcp/oled4pcp.cfg
+
+sed -i "s/$OS/oled_section=$oleddevice/" ~/.oled4pcp/oled4pcp.cfg
 
 echo $'\n'
 
@@ -96,7 +109,7 @@ UC_LINE=$(echo $UC1 | awk -F'USER_COMMAND_1=' '{print $2}' | sed 's/"//g')
 if [ "$UC_LINE" == "" ]; then
     # Command line is blank, so update it
     echo "Updating User Command"
-    $(sed -i "s/USER_COMMAND_1=\"\"/USER_COMMAND_1=\"python3+%2Fhome%2Ftc%2F.oled4pcp%2Foled4pcp_4.py+OLED%3D$oleddevice\"/" /usr/local/etc/pcp/pcp.cfg)
+    $(sed -i "s/USER_COMMAND_1=\"\"/USER_COMMAND_1=\"python3+%2Fhome%2Ftc%2F.oled4pcp%2Foled4pcp_4.py\"/" /usr/local/etc/pcp/pcp.cfg)
 else
     echo "User Command 1 in PCP tweaks isn't blank.  Please modify to run the extension"
 fi

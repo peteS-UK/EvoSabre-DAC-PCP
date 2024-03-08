@@ -17,6 +17,12 @@ def process_params(item):
 			return str(params.split("=")[1])
 	return ""
 
+def get_pcp_config(value):
+	for line in open('/usr/local/etc/pcp/pcp.cfg'):
+		if (line.split("=")[0] == value):
+			return(line.split("=")[1].replace('"','').rstrip())
+	return ""
+
 from PIL import Image, ImageDraw, ImageFont
 
 from luma.core.render import canvas
@@ -35,6 +41,15 @@ logger = logging.getLogger("oled")
 
 # ignore REQUESTS debug messages
 logging.getLogger('REQUESTS').setLevel(logging.ERROR)
+
+
+def get_lat_lng():
+	try:
+		url = "https://ipecho.io/my"
+		response = requests.get(url).json()
+		return float(response['latitude']), float(response['longitude'])
+	except:
+		return 0.0,0.0
 
 
 def get_sunrise_data(lat, lng):
@@ -445,15 +460,20 @@ class LMSTelnetServer(object):
 
 def get_player_mac(default_gateway_interface):
 	if len(process_params("MAC")) > 1 :
+		logger.info ("Player MAC: %s", process_params("MAC"))
 		return process_params("MAC")
+	
+	if get_pcp_config("MAC_ADDRESS") != "" :
+		logger.info ("Player MAC: %s", get_pcp_config("MAC_ADDRESS"))
+		return get_pcp_config("MAC_ADDRESS")
+	
+	mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
+	if mac != "":
+		logger.info ("Player MAC: %s", mac)
+		return mac
 	else :
-		mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
-		if mac != "":
-			logger.info ("Player MAC: %s", mac)
-			return mac
-		else :
-			logger.warning("MAC Discovery failed.  Using 00:11:22:33:44:55")
-			return "00:11:22:33:44:55"
+		logger.warning("MAC Discovery failed.  Using 00:11:22:33:44:55")
+		return "00:11:22:33:44:55"
 
 def get_player_ip(default_gateway_interface):
 	get_ip = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_INET][0]['addr']
@@ -466,39 +486,41 @@ def get_player_ip(default_gateway_interface):
 
 def get_lms_ip(player_ip):
 	if len(process_params("LMSIP")) > 1 :
-		lms_ip = process_params("LMSIP")
-		lms_name = ""
-	else :
-		#Discover the LMS IP Address
-		logger.info("Discovering LMS IP")
-		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+		return process_params("LMSIP"), ""
+		
+	if get_pcp_config("SERVER_IP") != "" :
+		return get_pcp_config("SERVER_IP"), ""
 
+	#Discover the LMS IP Address
+	logger.info("Discovering LMS IP")
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+	try:
+		sock.bind((player_ip,3483))
+	except (socket.error, socket.timeout):
+		logger.info ("	Local LMS Detected")
+		lms_ip = "127.0.0.1"
+		logger.info ("	LMS IP: %s",lms_ip)
+		lms_name = ""
+	else:
 		try:
-			sock.bind((player_ip,3483))
+			sock.settimeout(2.0)
+			sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
+			data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+
 		except (socket.error, socket.timeout):
-			logger.info ("	Local LMS Detected")
+			logger.warning ("	Discovery Failure.  Assuming Local LMS")
 			lms_ip = "127.0.0.1"
-			logger.info ("	LMS IP: %s",lms_ip)
+			logger.warning ("	LMS IP: %s",lms_ip)
 			lms_name = ""
 		else:
-			try:
-				sock.settimeout(2.0)
-				sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
-				data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
-
-			except (socket.error, socket.timeout):
-				logger.warning ("	Discovery Failure.  Assuming Local LMS")
-				lms_ip = "127.0.0.1"
-				logger.warning ("	LMS IP: %s",lms_ip)
-				lms_name = ""
-			else:
-				logger.debug("	Broadcast Response: %s", data)
-				lms_name = data.decode('UTF-8')[len("eName")+1:]
-				lms_ip = str(addr[0])
-				logger.info ("	Discovered Server: %s", lms_name)
-				logger.info ("	Discovered Server IP: %s",lms_ip)
-			finally:
-				sock.close()
+			logger.debug("	Broadcast Response: %s", data)
+			lms_name = data.decode('UTF-8')[len("eName")+1:]
+			lms_ip = str(addr[0])
+			logger.info ("	Discovered Server: %s", lms_name)
+			logger.info ("	Discovered Server IP: %s",lms_ip)
+		finally:
+			sock.close()
 
 	return lms_ip,lms_name

@@ -95,20 +95,23 @@ if (helper.process_params("LOGFILE") == "Y" or helper.process_params("LOGFILE") 
 
 logger.debug("debug 2")
 
-# Has the OLED device been specified 
-if len(helper.process_params("OLED")) == 0 :
-	logger.critical("OLED Type must be specified with OLED= parameter")
-	exit()
-
-oled = helper.process_params("OLED").upper()
-
-display = helper.Display()
-
 #Load config values
 config = helper.read_config()
 
 # Find the section headings
 sections = config.sections()
+
+oled = helper.process_params("OLED").upper()
+
+if len(helper.process_params("OLED")) == 0 :
+	oled = config['CONFIG']['oled_section'].upper()
+
+# Has the OLED device been specified 
+if oled == 0 :
+	logger.critical("OLED Type must be specified with OLED= parameter or in oled4pcp.cfg")
+	exit()
+
+display = helper.Display()
 
 # Does the ini contain settings for the specified OLED
 if oled not in sections :
@@ -135,10 +138,10 @@ display.time_vol_val_xy = helper.parse_int_tuple(config[oled]['time_vol_val_xy']
 display.scroll_speed = int(config[oled]['scroll_speed'])
 display.serial_params = config[oled]['serial_params']
 display.device_params = config[oled]['device_params']
-display.screensave_timeout = int(config[oled]['screensave_timeout'])
+display.screensave_timeout = int(config['CONFIG']['screensave_timeout'])
 display.banner_logo_font_size = int(config[oled]['banner_logo_font_size'])
-display.banner_text = config[oled]['banner_text']
-display.logo_file_name = config[oled]['logo_file_name']
+display.banner_text = config['CONFIG']['banner_text']
+display.logo_file_name = config['CONFIG']['logo_file_name']
 display.connecting_font_size = int(config[oled]['connecting_font_size'])
 display.vol_large_font_size = int(config[oled]['vol_large_font_size'])
 display.logo_font_size = int(config[oled]['logo_font_size'])
@@ -147,8 +150,8 @@ display.title_artist_line_1_font_size = int(config[oled]['title_artist_line_1_fo
 display.title_artist_line_2_font_size = int(config[oled]['title_artist_line_2_font_size'])
 display.info_font_size = int(config[oled]['info_font_size'])
 display.time_large_font_size = int(config[oled]['time_large_font_size'])
-display.playing_polling_interval = int(config[oled]['playing_polling_interval'])
-display.stopped_polling_interval = int(config[oled]['stopped_polling_interval'])
+display.playing_polling_interval = int(config['CONFIG']['playing_polling_interval'])
+display.stopped_polling_interval = int(config['CONFIG']['stopped_polling_interval'])
 display.font_metadata=config[oled]['font_metadata']
 display.font_volume=config[oled]['font_volume']
 display.font_info=config[oled]['font_info']
@@ -178,27 +181,42 @@ logger.info("Device Dimensions : %s*%s", device.width, device.height)
 display.height=device.height
 display.width=device.width
 
-location = helper.process_params("LOCATION")
 lat = 0
 lng = 0
 
+location = helper.process_params("LOCATION")
+
 if location != "":
+	logger.info("Location set from argument")
 	lat = float(location.split(",")[0])
 	lng = float(location.split(",")[1])
+
+elif float(config['CONFIG']['longitude']) != 0 and float(config['CONFIG']['longitude']) != 0:
+	logger.info("Location set from config")
+	lat = float(config['CONFIG']['latitude'])
+	lng = float(config['CONFIG']['longitude'])
+
+else: 
+	lat, lng = helper.get_lat_lng()
+	if lat != 0 and lng != 0 :
+		logger.info("Location %f, %f set by IP discovery", lat, lng)
+
+if lat != 0 and lng != 0 :
 	daynight = helper.daynight(datetime.now(tz=timezone.utc), lat, lng)
+	logger.info("Current sun location is %s", daynight)
 else:
 	daynight = "unknown"
 
 daynight_store = daynight
 
-contrast_day = int(config[oled]['contrast_day'])
-contrast_night = int(config[oled]['contrast_night'])
+contrast_day = int(config['CONFIG']['contrast_day'])
+contrast_night = int(config['CONFIG']['contrast_night'])
 
 #Set the contrasts
 helper.set_contrast(daynight, contrast_day, contrast_night, device)
 
 try:
-	contrast_screensave = int(config[oled]['contrast_screensave'])
+	contrast_screensave = int(config['CONFIG']['contrast_screensave'])
 	if contrast_screensave < 0 or contrast_screensave > 255 :
 		logger.warn("ScreenSave CONTRAST must be between 0 & 255")	
 		contrast_screensave = 255
@@ -364,6 +382,7 @@ def server_connect():
 			player_ip = helper.get_player_ip(default_gateway_interface)
 
 			lms_ip, lms_name = helper.get_lms_ip(player_ip)
+
 			player_mac = str(helper.get_player_mac(default_gateway_interface))
 			
 			with canvas(device) as draw:
@@ -376,6 +395,7 @@ def server_connect():
 
 			# Handle for subscription
 			global subscription_server_handle
+
 			subscription_server_handle = helper.LMSTelnetServer(hostname=lms_ip, port=9090, username="user", password="password", charset='utf8')
 			subscription_server_handle.connect()
 			subscription_server_handle.request("subscribe power,pause,play,mode")
