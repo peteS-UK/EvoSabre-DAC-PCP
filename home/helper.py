@@ -171,8 +171,8 @@ class TextImage():
 		
 		left, top, right, bottom = font.getbbox(text)
 
-		w = right - left
-		h = bottom - top
+		w = right
+		h = bottom
 
 		self.image = Image.new(device.mode, (w, h))
 		draw = ImageDraw.Draw(self.image)
