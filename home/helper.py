@@ -167,8 +167,13 @@ class TextImage():
 		#	w, h = draw.textsize(text, font)
 
 		# Change to getsize to try and workaround screen blink on canvas draw
-		w, h = font.getsize(text)
+		#w, h = font.getsize(text)
 		
+		left, top, right, bottom = font.getbbox(text)
+
+		w = right - left
+		h = bottom - top
+
 		self.image = Image.new(device.mode, (w, h))
 		draw = ImageDraw.Draw(self.image)
 		draw.text((0, 0), text, font=font, fill="white")
