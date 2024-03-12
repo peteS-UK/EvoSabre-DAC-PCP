@@ -66,6 +66,7 @@ else
     done < ~/tmp
 fi
 
+rm -f tmp
 
 # Update oled4pcp.cfg with new oled section name
 while read line; do
@@ -128,15 +129,15 @@ fi
 mkdir ~/.oled4pcp/fonts 2>>/dev/null
 
 echo "Moving Files to home/.oled4pcp"
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/oled4pcp_4.py -P ~/.oled4pcp -O oled4pcp_4.py
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/helper.py -P ~/.oled4pcp -O helper.py
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/audiophonics_logo_256_64.bmp -P ~/.oled4pcp -O audiophonics_logo_256_64.bmp
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_256_64.bmp -P ~/.oled4pcp -O pcp_logo_256_64.bmp
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/audiophonics_logo_128_64.bmp -P ~/.oled4pcp -O audiophonics_logo_128_64.bmp
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_128_64.bmp -P ~/.oled4pcp -O pcp_logo_128_64.bmp
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/arial.ttf -P ~/.oled4pcp/fonts -O arial.ttf
-wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/fontawesome-webfont.ttf -P ~/.oled4pcp/fonts -O fontawesome-webfont.ttf
-
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/oled4pcp_4.py -O ~/.oled4pcp/oled4pcp_4.py
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/helper.py -O ~/.oled4pcp/helper.py
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/audiophonics_logo_256_64.bmp -O ~/.oled4pcp/audiophonics_logo_256_64.bmp
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_256_64.bmp -O ~/.oled4pcp/pcp_logo_256_64.bmp
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/audiophonics_logo_128_64.bmp -O ~/.oled4pcp/audiophonics_logo_128_64.bmp
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/pcp_logo_128_64.bmp -O ~/.oled4pcp/pcp_logo_128_64.bmp
+mkdir ~/.oled4pcp/fonts 2>>/dev/null
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/arial.ttf -O ~/.oled4pcp/fonts/arial.ttf
+wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/home/fonts/fontawesome-webfont.ttf -O ~/.oled4pcp/fonts/fontawesome-webfont.ttf
 
 #Check if USER_COMMAND_1 is set already
 while read line; do
