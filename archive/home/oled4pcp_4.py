@@ -28,7 +28,6 @@
 # Read from config file for oled setup
 # Change to composed images and updating scrolling design
 # Auto switch contrast at dawn and dusk, using data from https://sunrise-sunset.org/api
-# Add I2C support
 
 
 
@@ -76,7 +75,7 @@ except :
 
 from PIL import Image
 
-from luma.core.interface.serial import spi, i2c
+from luma.core.interface.serial import spi
 from luma.core.render import canvas
 from luma.core.image_composition import ImageComposition, ComposableImage
 
@@ -95,31 +94,27 @@ if (helper.process_params("LOGFILE") == "Y" or helper.process_params("LOGFILE") 
 
 logger.debug("debug 2")
 
+# Has the OLED device been specified 
+if len(helper.process_params("OLED")) == 0 :
+	logger.critical("OLED Type must be specified with OLED= parameter")
+	exit()
+
+oled = helper.process_params("OLED").upper()
+
+display = helper.Display()
+
 #Load config values
 config = helper.read_config()
 
 # Find the section headings
 sections = config.sections()
 
-oled = helper.process_params("OLED").upper()
-
-if len(helper.process_params("OLED")) == 0 :
-	oled = config['CONFIG']['oled_section'].upper()
-
-# Has the OLED device been specified 
-if oled == 0 :
-	logger.critical("OLED Type must be specified with OLED= parameter or in oled4pcp.cfg")
-	exit()
-
-display = helper.Display()
-
 # Does the ini contain settings for the specified OLED
 if oled not in sections :
-	logger.critical("OLED device not defined in oled4pcp.cfg")
+	logger.critical("OLED device not defined in oled.cfg")
 	exit()
 
 display.type=config[oled]['type']
-display.serial_interface=config[oled]['serial_interface']
 display.vol_screen_icon_xy = helper.parse_int_tuple(config[oled]['vol_screen_icon_xy'])
 display.vol_screen_value_y = int(config[oled]['vol_screen_value_y'])
 display.vol_screen_rect = helper.parse_int_tuple(config[oled]['vol_screen_rect'])
@@ -136,12 +131,10 @@ display.time_xy = helper.parse_int_tuple(config[oled]['time_xy'])
 display.time_vol_icon_xy = helper.parse_int_tuple(config[oled]['time_vol_icon_xy'])
 display.time_vol_val_xy = helper.parse_int_tuple(config[oled]['time_vol_val_xy'])
 display.scroll_speed = int(config[oled]['scroll_speed'])
-display.serial_params = config[oled]['serial_params']
+display.spi_params = config[oled]['spi_params']
 display.device_params = config[oled]['device_params']
-display.screensave_timeout = int(config['CONFIG']['screensave_timeout'])
-display.banner_logo_font_size = int(config[oled]['banner_logo_font_size'])
-display.banner_text = config['CONFIG']['banner_text']
-display.logo_file_name = config['CONFIG']['logo_file_name']
+display.screensave_timeout = int(config[oled]['screensave_timeout'])
+display.audiophonics_logo_font_size = int(config[oled]['audiophonics_logo_font_size'])
 display.connecting_font_size = int(config[oled]['connecting_font_size'])
 display.vol_large_font_size = int(config[oled]['vol_large_font_size'])
 display.logo_font_size = int(config[oled]['logo_font_size'])
@@ -150,8 +143,8 @@ display.title_artist_line_1_font_size = int(config[oled]['title_artist_line_1_fo
 display.title_artist_line_2_font_size = int(config[oled]['title_artist_line_2_font_size'])
 display.info_font_size = int(config[oled]['info_font_size'])
 display.time_large_font_size = int(config[oled]['time_large_font_size'])
-display.playing_polling_interval = int(config['CONFIG']['playing_polling_interval'])
-display.stopped_polling_interval = int(config['CONFIG']['stopped_polling_interval'])
+display.playing_polling_interval = int(config[oled]['playing_polling_interval'])
+display.stopped_polling_interval = int(config[oled]['stopped_polling_interval'])
 display.font_metadata=config[oled]['font_metadata']
 display.font_volume=config[oled]['font_volume']
 display.font_info=config[oled]['font_info']
@@ -165,65 +158,36 @@ song_data = helper.SongData()
 oled_module = importlib.import_module("luma.oled.device")
 oled_device = getattr(oled_module,display.type)
 
-if display.serial_interface == "spi":
-	serial = spi(**json.loads(display.serial_params))
-elif display.serial_interface == "i2c": 
-	serial = i2c(**json.loads(display.serial_params))
-else:
-	logger.critical("Unknown serial_interface in oled4pcp.cfg")
-	exit()
-
+serial = spi(**json.loads(display.spi_params))
 device = oled_device(serial, **json.loads(display.device_params))
 
 del oled_module
 
 logger.info("Device Dimensions : %s*%s", device.width, device.height)
-logger.info("Device Mode : %s", device.mode)
-
-if device.mode == "RGB" :
-	lightfill = "grey"
-else :
-	lightfill = "white"
-
 display.height=device.height
 display.width=device.width
 
+location = helper.process_params("LOCATION")
 lat = 0
 lng = 0
 
-location = helper.process_params("LOCATION")
-
 if location != "":
-	logger.info("Location set from argument")
 	lat = float(location.split(",")[0])
 	lng = float(location.split(",")[1])
-
-elif float(config['CONFIG']['longitude']) != 0 and float(config['CONFIG']['longitude']) != 0:
-	logger.info("Location set from config")
-	lat = float(config['CONFIG']['latitude'])
-	lng = float(config['CONFIG']['longitude'])
-
-else: 
-	lat, lng = helper.get_lat_lng()
-	if lat != 0 and lng != 0 :
-		logger.info("Location %f, %f set by IP discovery", lat, lng)
-
-if lat != 0 and lng != 0 :
 	daynight = helper.daynight(datetime.now(tz=timezone.utc), lat, lng)
-	logger.info("Current sun location is %s", daynight)
 else:
 	daynight = "unknown"
 
 daynight_store = daynight
 
-contrast_day = int(config['CONFIG']['contrast_day'])
-contrast_night = int(config['CONFIG']['contrast_night'])
+contrast_day = int(config[oled]['contrast_day'])
+contrast_night = int(config[oled]['contrast_night'])
 
 #Set the contrasts
 helper.set_contrast(daynight, contrast_day, contrast_night, device)
 
 try:
-	contrast_screensave = int(config['CONFIG']['contrast_screensave'])
+	contrast_screensave = int(config[oled]['contrast_screensave'])
 	if contrast_screensave < 0 or contrast_screensave > 255 :
 		logger.warn("ScreenSave CONTRAST must be between 0 & 255")	
 		contrast_screensave = 255
@@ -237,7 +201,7 @@ font_vol_large			= helper.make_font(display.font_volume, display.vol_large_font_
 font_info				= helper.make_font(display.font_info, display.info_font_size)
 font_connecting			= helper.make_font(display.font_connecting, display.connecting_font_size)
 
-font_banner_logo		= helper.make_font(display.font_audiophonics, display.banner_logo_font_size)
+font_audiophonics_logo	= helper.make_font(display.font_audiophonics, display.audiophonics_logo_font_size)
 font_time_large			= helper.make_font(display.font_time, display.time_large_font_size)
 font_logo				= helper.make_font(display.font_logo, display.logo_font_size)
 font_logo_large			= helper.make_font(display.font_logo, display.logo_large_font_size)
@@ -389,7 +353,6 @@ def server_connect():
 			player_ip = helper.get_player_ip(default_gateway_interface)
 
 			lms_ip, lms_name = helper.get_lms_ip(player_ip)
-
 			player_mac = str(helper.get_player_mac(default_gateway_interface))
 			
 			with canvas(device) as draw:
@@ -402,7 +365,6 @@ def server_connect():
 
 			# Handle for subscription
 			global subscription_server_handle
-
 			subscription_server_handle = helper.LMSTelnetServer(hostname=lms_ip, port=9090, username="user", password="password", charset='utf8')
 			subscription_server_handle.connect()
 			subscription_server_handle.request("subscribe power,pause,play,mode")
@@ -438,7 +400,7 @@ except:
 
 if bufsize >= 8192:
 
-	logo_name = display.logo_file_name
+	logo_name = "logo_"+str(device.width)+"_"+str(device.height)+".bmp"
 	logo_path = os.path.abspath(os.path.join(
 	os.path.dirname(__file__), logo_name))
 	
@@ -448,7 +410,7 @@ if bufsize >= 8192:
 
 else:
 	with canvas(device) as draw:
-		helper.draw_multiline_text_centered(draw,display.banner_text,font_banner_logo, display)
+		helper.draw_multiline_text_centered(draw,"Audiophonics",font_audiophonics_logo, display)
 
 time.sleep(2)
 
@@ -464,9 +426,7 @@ mode_store = ""
 file_info_store = ""
 
 screensave_chars = ("\\","|","/","-","\\","|","/","-","\\","|")
-# screensave_height = font_info.getsize("".join(screensave_chars))[1]
-
-screensave_height = font_info.getbbox("".join(screensave_chars))[3]
+screensave_height = font_info.getsize("".join(screensave_chars))[1]
 
 scroll_states = ("","WAIT_SCROLL","SCROLLING","WAIT_REWIND","WAIT_SYNC","PRE_RENDER")
 
@@ -500,17 +460,17 @@ else:
 	network_logo = wifi_logo
 
 ip_screen_composition.add_image(
-	ComposableImage(helper.TextImage(device, network_logo, font=font_logo, fill = lightfill).image, 
+	ComposableImage(helper.TextImage(device, network_logo, font=font_logo).image, 
 	position=display.time_ip_logo_xy))
 ip_screen_composition.add_image(
-	ComposableImage(helper.TextImage(device, player_ip, font=font_info, fill= lightfill).image, 
+	ComposableImage(helper.TextImage(device, player_ip, font=font_info).image, 
 	position=display.time_ip_val_xy))
 if song_data.fixed_volume == False :
 	ip_screen_composition.add_image(
-		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo, fill= lightfill).image, 
+		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo).image, 
 		position=display.time_vol_icon_xy))
 	play_screen_composition.add_image(
-		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo, fill= lightfill).image, 
+		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo).image, 
 		position=display.title_line3_volume_icon_xy))
 
 try:
@@ -575,18 +535,18 @@ try:
 			else :
 				bitrate_val = str(song_data.bitrate)
 
-#			bitrate_width, char = font_title_artist_line_2.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
+			bitrate_width, char = font_title_artist_line_2.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
 			
-#			x_bitrate_pos = int((display.width - bitrate_width) / 2)
-#			if x_bitrate_pos < 0 :
-#				x_bitrate_pos = 0
+			x_bitrate_pos = int((display.width - bitrate_width) / 2)
+			if x_bitrate_pos < 0 :
+				x_bitrate_pos = 0
 			
 			try:
 				del scroll_play_line_2
 			except:
 				logger.debug("No bitrate to remove")
 
-			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_title_artist_line_2, fill = lightfill).image, 
+			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_title_artist_line_2).image, 
 					position=(0, display.title_artist_line2_y))
 			
 			scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
@@ -595,9 +555,9 @@ try:
 			if info_duration != 0 :
 				dura_min = info_duration/60
 				dura_sec = info_duration%60
-				dura_min = "%d" %dura_min
+				dura_min = "%2d" %dura_min
 				dura_sec = "%02d" %dura_sec
-				dura_val = " / " + str(dura_min)+":"+str(dura_sec)
+				dura_val = "/" + str(dura_min)+":"+str(dura_sec)
 			else : 
 				dura_val = ""
 
@@ -636,8 +596,7 @@ try:
 				helper.set_contrast(daynight, contrast_day, contrast_night, device)
 			
 			with canvas(device) as draw:
-				# vol_width, char = font_vol_large.getsize(song_data.volume)
-				vol_width = font_vol_large.getlength(song_data.volume)
+				vol_width, char = font_vol_large.getsize(song_data.volume)
 				x_vol = ((display.width - vol_width) / 2)
 				# Volume Display
 				draw.text(display.vol_screen_icon_xy, volume_logo, font=font_logo_large, fill="white")
@@ -647,7 +606,7 @@ try:
 				draw.rectangle((display.vol_screen_rect[0],
 						display.vol_screen_rect[1],
 						Volume_bar_width,
-						display.vol_screen_rect[3]), outline=1, fill= lightfill)
+						display.vol_screen_rect[3]), outline=1, fill=1)
 			volume_store = song_data.volume
 			timer_vol = timer_vol - 1
 			
@@ -714,7 +673,7 @@ try:
 					
 				ci_play_line_2 = ComposableImage(helper.TextImage(device, 
 					song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, 
-					font=font_title_artist_line_2, fill= lightfill).image, 
+					font=font_title_artist_line_2).image, 
 					position=(0, display.title_artist_line2_y))
 								
 				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
@@ -756,15 +715,15 @@ try:
 				if song_data.mode == "pause": 
 					draw.text(display.pause_xy, text=pause_logo, font=font_logo, fill="white")
 				else:
-					draw.text(display.title_line3_time_xy, time_val+dura_val, font=font_info, fill= lightfill)
+					draw.text(display.title_line3_time_xy, time_val+dura_val, font=font_info, fill="white")
 #				
 				draw.rectangle((display.title_timebar[0],
 					display.title_timebar[1],
 					time_bar,
-					display.title_timebar[3]), outline=0, fill= lightfill)
+					display.title_timebar[3]), outline=0, fill=1)
 
 				if song_data.fixed_volume == False :
-					draw.text(display.title_line3_volume_val_xy, song_data.volume, font=font_info, fill= lightfill)
+					draw.text(display.title_line3_volume_val_xy, song_data.volume, font=font_info, fill="white")
 
 			time.sleep(0.05)
 

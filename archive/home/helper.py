@@ -17,12 +17,6 @@ def process_params(item):
 			return str(params.split("=")[1])
 	return ""
 
-def get_pcp_config(value):
-	for line in open('/usr/local/etc/pcp/pcp.cfg'):
-		if (line.split("=")[0] == value):
-			return(line.split("=")[1].replace('"','').rstrip())
-	return ""
-
 from PIL import Image, ImageDraw, ImageFont
 
 from luma.core.render import canvas
@@ -41,15 +35,6 @@ logger = logging.getLogger("oled")
 
 # ignore REQUESTS debug messages
 logging.getLogger('REQUESTS').setLevel(logging.ERROR)
-
-
-def get_lat_lng():
-	try:
-		url = "https://ipecho.io/my"
-		response = requests.get(url).json()
-		return float(response['latitude']), float(response['longitude'])
-	except:
-		return 0.0,0.0
 
 
 def get_sunrise_data(lat, lng):
@@ -153,6 +138,7 @@ def make_font(name, size):
 	os.path.dirname(__file__), 'fonts', name))
 	return ImageFont.truetype(font_path, size)
 
+
 def parse_int_tuple(input):
 	return tuple(int(k.strip()) for k in input[1:-1].split(','))
 
@@ -161,41 +147,16 @@ def parse_tuple(input):
 
 
 class TextImage():
-	def __init__(self, device, text, font, fill="white"):
+	def __init__(self, device, text, font):
 		#with canvas(device) as draw:
 		#	w, h = draw.textsize(text, font)
 
 		# Change to getsize to try and workaround screen blink on canvas draw
-#		w, h = font.getsize(text)
-#		logger.info("Width %d, height %d", w, h)
-
-#		with canvas(device) as draw:
-#			left, top, right, bottom = draw.textbbox((0, 0), text, font)
-#			logger.info("draw left %d, top %d, right %d, bottom %d", left, top, right, bottom)
-#			w, h = right - left, bottom - top
-
-		#left, top, right, bottom = font.getbbox(text)
-
-		#logger.info("BBox left %d, top %d, right %d, bottom %d", left, top, right, bottom)
-
-		# logger.info("getLength %d", font.getlength(text))
-
-
-		tempimage = Image.new(device.mode, device.size)
-		draw = ImageDraw.Draw(tempimage)
-		left, top, right, bottom = draw.textbbox((0, 0), text, font)
-		# logger.info("draw left %d, top %d, right %d, bottom %d", left, top, right, bottom)
-		del draw
-		del tempimage
-
-
-		w = right
-		h = bottom
-
+		w, h = font.getsize(text)
+		
 		self.image = Image.new(device.mode, (w, h))
 		draw = ImageDraw.Draw(self.image)
-		#draw.rectangle((left,top,right,bottom),outline="white")
-		draw.text((0, 0), text, font=font, fill=fill)
+		draw.text((0, 0), text, font=font, fill="white")
 		del draw
 		self.width = w
 		self.height = h
@@ -301,10 +262,7 @@ def draw_text_centered(draw,y,text,myfont, display):
 	draw.text(((display.width-text_width)/2,y),text,font=myfont,fill="white")
 	
 def draw_multiline_text_centered(draw,text,myfont, display):
-	# text_width, text_height = draw.multiline_textsize(text,font=myfont)
-	
-	char, char, text_width, text_height = draw.multiline_textbbox((0,0),text,font=myfont)
-
+	text_width, text_height = draw.multiline_textsize(text,font=myfont)
 	draw.text(((display.width-text_width)/2,(display.height-text_height)/2),text,font=myfont,fill="white",align="center")
 
 
@@ -326,7 +284,6 @@ class SongData:
 
 class Display:
 	type=""
-	serial_interface=""
 	logo_xy = (0,0)
 	vol_screen_icon_xy = (0,0)
 	vol_screen_value_y = 0
@@ -346,11 +303,9 @@ class Display:
 	scroll_unit = 0
 	width = 0
 	height = 0
-	serial_params = ""
+	spi_params = ""
 	screensaveS_timeout = 0
-	banner_logo_font_size = 0
-	banner_text = ""
-	logo_file_name = ""
+	audiophonics_logo_font_size = 0
 	connecting_font_size = 0
 	vol_large_font_size = 0
 	logo_font_size = 0
@@ -487,20 +442,15 @@ class LMSTelnetServer(object):
 
 def get_player_mac(default_gateway_interface):
 	if len(process_params("MAC")) > 1 :
-		logger.info ("Player MAC: %s", process_params("MAC"))
 		return process_params("MAC")
-	
-	if get_pcp_config("MAC_ADDRESS") != "" :
-		logger.info ("Player MAC: %s", get_pcp_config("MAC_ADDRESS"))
-		return get_pcp_config("MAC_ADDRESS")
-	
-	mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
-	if mac != "":
-		logger.info ("Player MAC: %s", mac)
-		return mac
 	else :
-		logger.warning("MAC Discovery failed.  Using 00:11:22:33:44:55")
-		return "00:11:22:33:44:55"
+		mac = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_LINK][0]['addr']
+		if mac != "":
+			logger.info ("Player MAC: %s", mac)
+			return mac
+		else :
+			logger.warning("MAC Discovery failed.  Using 00:11:22:33:44:55")
+			return "00:11:22:33:44:55"
 
 def get_player_ip(default_gateway_interface):
 	get_ip = netifaces.ifaddresses(default_gateway_interface)[netifaces.AF_INET][0]['addr']
@@ -513,41 +463,39 @@ def get_player_ip(default_gateway_interface):
 
 def get_lms_ip(player_ip):
 	if len(process_params("LMSIP")) > 1 :
-		return process_params("LMSIP"), ""
-		
-	if get_pcp_config("SERVER_IP") != "" :
-		return get_pcp_config("SERVER_IP"), ""
-
-	#Discover the LMS IP Address
-	logger.info("Discovering LMS IP")
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-	try:
-		sock.bind((player_ip,3483))
-	except (socket.error, socket.timeout):
-		logger.info ("	Local LMS Detected")
-		lms_ip = "127.0.0.1"
-		logger.info ("	LMS IP: %s",lms_ip)
+		lms_ip = process_params("LMSIP")
 		lms_name = ""
-	else:
-		try:
-			sock.settimeout(2.0)
-			sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
-			data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+	else :
+		#Discover the LMS IP Address
+		logger.info("Discovering LMS IP")
+		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
+		try:
+			sock.bind((player_ip,3483))
 		except (socket.error, socket.timeout):
-			logger.warning ("	Discovery Failure.  Assuming Local LMS")
+			logger.info ("	Local LMS Detected")
 			lms_ip = "127.0.0.1"
-			logger.warning ("	LMS IP: %s",lms_ip)
+			logger.info ("	LMS IP: %s",lms_ip)
 			lms_name = ""
 		else:
-			logger.debug("	Broadcast Response: %s", data)
-			lms_name = data.decode('UTF-8')[len("eName")+1:]
-			lms_ip = str(addr[0])
-			logger.info ("	Discovered Server: %s", lms_name)
-			logger.info ("	Discovered Server IP: %s",lms_ip)
-		finally:
-			sock.close()
+			try:
+				sock.settimeout(2.0)
+				sock.sendto(b"eNAME\0", ('255.255.255.255', 3483))
+				data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+
+			except (socket.error, socket.timeout):
+				logger.warning ("	Discovery Failure.  Assuming Local LMS")
+				lms_ip = "127.0.0.1"
+				logger.warning ("	LMS IP: %s",lms_ip)
+				lms_name = ""
+			else:
+				logger.debug("	Broadcast Response: %s", data)
+				lms_name = data.decode('UTF-8')[len("eName")+1:]
+				lms_ip = str(addr[0])
+				logger.info ("	Discovered Server: %s", lms_name)
+				logger.info ("	Discovered Server IP: %s",lms_ip)
+			finally:
+				sock.close()
 
 	return lms_ip,lms_name
