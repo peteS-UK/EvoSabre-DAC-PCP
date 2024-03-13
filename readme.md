@@ -40,7 +40,7 @@ This will execute a script to download and install the OLED control script and c
 
 During installation, you're asked for your OLED device.  For example, for EvoSabre, this is SSD1322 and for RaspDAC Mini, it's SSD1306.  You can see the potentially supported device names at https://luma-oled.readthedocs.io/en/latest/.
 
-When running, the program will take its configuration, including device control, font sizes, text locations etc. from a file, oled4pcp.cfg.  On installation, this file has sections for SSD1322 and SSD1306 displays.  If you're using a different display, you'll need to create an appropriate section in the oled4pcp.cfg file, by copying the SSH1322 section, and adjusting accordingly.
+When running, the program will take its configuration, including device control, font sizes, text locations etc. from a file, oled4pcp.cfg.  On installation, this file has sections for SSD1322, SSD1306 and SSD1309 displays.  If you're using a different display, you'll need to create an appropriate section in the oled4pcp.cfg file, by copying the SSH1322 section, and adjusting accordingly.
 
 At the end of the installation, you'll be instructed to reboot your PCP
 
@@ -48,45 +48,46 @@ At the end of the installation, you'll be instructed to reboot your PCP
 pcp rb
 ```
 
-After installation, if you selected either SSD1322 or SSD1306, your device should begin to work on reboot.  For other devices, you'll need to modify oled4pcp.cfg, backup and reboot.
+After installation, if you selected either SSD1322, SSD1306 or SSD1309, your device should begin to work on reboot.  For other devices, you'll need to modify oled4pcp.cfg, backup and reboot.
 
 If you do add other devices, please contribute them back to repo.
 
 ### Command Line Options
 
-The command to start the script for the display is added during installation to the USER_COMMAND_1 line in the Tweaks page on PCP.  By default, for an SSD1322, this will be 
+The command to start the script for the display is added during installation to the USER_COMMAND_1 line in the Tweaks page on PCP.  By default, this will be 
 
 ```
-python3 /home/tc/oled4pcp_4.py OLED=SSD1322
+python3 /home/tc/oled4pcp_4.py
 ```
-
-#### OLED=
-
-This options is required and OLED= specifies the section in oled4pcp.cfg which matches your OLED.  
-
-There are various other command line options you can specify by editing this user command.
-
-#### LMSIP=
-
-The script will try to detect the LMS on the network.  However, if this doesn't work for some reason, or if you have multiple LMSs, you can override this discovery process by specifying the IP address of your LMS.
-
-#### MAC=
-
-The script will try to detect the MAC address of your PCP.  If this fails, you can override the MAC address.  Also, if you choose to specify the MAC address in Squeezelite settings in PCP, you must also then specify the same MAC address here.
 
 #### LOGFILE=
 
 If you specify LOGFILE=Y, the logger output from the script will be written to /var/log/oled4pcp.log, rather than to standard out.
 
-#### LOCATION=
-
-If you specify your latitude and longitude, the script will try to discover the sunrise and sunset times, and adjust the screen contrast automatically for day and night.  The location must be 2 float numbers, separated by a comma e.g. for London, specify LOCATION=51.507351,-0.127758
 
 ### OLED4PCP.CFG
 
-The oled4pcp.cfg file contains font size, screen locations etc.  There must be a section heading matching the name of the device specified in the OLED= parameter e.g. [SSD1322].
+The oled4pcp.cfg file contains a [CONFIG] section, which contains some general settings for the app, and then a section for each display type - e.g. [SSD1322]
 
-The oled4pcp.cfg contains four entries specific to the OLED device.  For the SSD1322, these are
+#### [CONFIG]
+
+The [CONFIG] section contains a number of settings for the app.  These include
+
+```
+[CONFIG]
+oled_section=SSD1322
+latitude=0
+longitude=0
+```
+
+##### oled_section=
+This setting identifies the section in the .cfg file which actually contains the settings for the display.
+
+##### Latitude and Longitude
+If you specify the latitude and longitude, the app will use these to lookup the dusk and dawn for your location and use these to adjust the contrast to the  `contrast_day` and `contrast_night` settings.  If you leave these both equal to zero, the app will try and lookup your location based on your public IP address and use this instead.
+ 
+#### [DISPLAY SECTION]
+The oled4pcp.cfg contains entries specific to the OLED device in a section referenced by the oled)section= entry.  For the [SSD1322], these are
 
 ```
 type=ssd1322
@@ -95,7 +96,7 @@ serial_params={"port":0, "device":0, "gpio_DC":27, "gpio_RST":24}
 device_params={"rotate":0, "mode":"1"}
 ```
 
-Take care to make sure the "type" matches your display and is listed at https://luma-oled.readthedocs.io/en/latest.  Check the "serial_interface" is correctly set to either spi or i2c and that the "serial_params" and "device_params" are set correctly for your device.
+Take care to make sure the "type" matches your actual display and is listed at https://luma-oled.readthedocs.io/en/latest.  Check the "serial_interface" is correctly set to either spi or i2c and that the "serial_params" and "device_params" are set correctly for your device and connection and don't interfere with any other GPIOs in use.
 
 If you make any changes to the oled4pcp.cfg file, you need to backup and reboot, either through the PCP UI, or through SSH
 
