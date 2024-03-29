@@ -189,13 +189,13 @@ class TextImage():
 		del tempimage
 
 
-		w = right
+		w = right+2
 		h = bottom
 
 		self.image = Image.new(device.mode, (w, h))
 		draw = ImageDraw.Draw(self.image)
 		#draw.rectangle((left,top,right,bottom),outline="white")
-		draw.text((0, 0), text, font=font, fill=fill)
+		draw.text((1, 0), text, font=font, fill=fill)
 		del draw
 		self.width = w
 		self.height = h
