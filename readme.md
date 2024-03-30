@@ -1,4 +1,4 @@
-# OLED Control for PCP 7.x & 8.X & Configuration for Audiophonics EvoSabre DAC
+# OLED Control for PCP 7.x, 8.X & 9.X & Configuration for Audiophonics EvoSabre DAC
 
 ## Background
 
