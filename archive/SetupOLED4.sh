@@ -13,7 +13,24 @@ while true; do
 done
 
 echo "Installing python3 and freetype extension"
-tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
+
+while read line; do
+    echo $line | grep -q PCPVERS
+        if [ $? -eq 0 ]; then
+  	        VERLINE=$(echo $line)
+        fi
+done < /usr/local/etc/pcp/pcpversion.cfg
+
+VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g')
+
+if [[ $VER == 9* ]]; 
+    then 
+        tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
+
+    else 
+        tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
+fi
+
 
 if [ "$(uname -m)" = "aarch64" ]; then
     echo "Installing 64 bit extension"

@@ -178,6 +178,13 @@ device = oled_device(serial, **json.loads(display.device_params))
 del oled_module
 
 logger.info("Device Dimensions : %s*%s", device.width, device.height)
+logger.info("Device Mode : %s", device.mode)
+
+if device.mode == "RGB" :
+	lightfill = "grey"
+else :
+	lightfill = "white"
+
 display.height=device.height
 display.width=device.width
 
@@ -457,7 +464,9 @@ mode_store = ""
 file_info_store = ""
 
 screensave_chars = ("\\","|","/","-","\\","|","/","-","\\","|")
-screensave_height = font_info.getsize("".join(screensave_chars))[1]
+# screensave_height = font_info.getsize("".join(screensave_chars))[1]
+
+screensave_height = font_info.getbbox("".join(screensave_chars))[3]
 
 scroll_states = ("","WAIT_SCROLL","SCROLLING","WAIT_REWIND","WAIT_SYNC","PRE_RENDER")
 
@@ -491,17 +500,17 @@ else:
 	network_logo = wifi_logo
 
 ip_screen_composition.add_image(
-	ComposableImage(helper.TextImage(device, network_logo, font=font_logo).image, 
+	ComposableImage(helper.TextImage(device, network_logo, font=font_logo, fill = lightfill).image, 
 	position=display.time_ip_logo_xy))
 ip_screen_composition.add_image(
-	ComposableImage(helper.TextImage(device, player_ip, font=font_info).image, 
+	ComposableImage(helper.TextImage(device, player_ip, font=font_info, fill= lightfill).image, 
 	position=display.time_ip_val_xy))
 if song_data.fixed_volume == False :
 	ip_screen_composition.add_image(
-		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo).image, 
+		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo, fill= lightfill).image, 
 		position=display.time_vol_icon_xy))
 	play_screen_composition.add_image(
-		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo).image, 
+		ComposableImage(helper.TextImage(device, volume_logo, font=font_logo, fill= lightfill).image, 
 		position=display.title_line3_volume_icon_xy))
 
 try:
@@ -566,18 +575,18 @@ try:
 			else :
 				bitrate_val = str(song_data.bitrate)
 
-			bitrate_width, char = font_title_artist_line_2.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
+#			bitrate_width, char = font_title_artist_line_2.getsize(song_data.sample_rate + song_data.sample_size + bitrate_val + " " + song_data.file_type)
 			
-			x_bitrate_pos = int((display.width - bitrate_width) / 2)
-			if x_bitrate_pos < 0 :
-				x_bitrate_pos = 0
+#			x_bitrate_pos = int((display.width - bitrate_width) / 2)
+#			if x_bitrate_pos < 0 :
+#				x_bitrate_pos = 0
 			
 			try:
 				del scroll_play_line_2
 			except:
 				logger.debug("No bitrate to remove")
 
-			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_title_artist_line_2).image, 
+			ci_play_line_2 = ComposableImage(helper.TextImage(device, song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, font=font_title_artist_line_2, fill = lightfill).image, 
 					position=(0, display.title_artist_line2_y))
 			
 			scroll_play_line_2 = helper.Scroller(play_screen_composition, ci_play_line_2, 20, synchroniser, display.scroll_speed)
@@ -586,9 +595,9 @@ try:
 			if info_duration != 0 :
 				dura_min = info_duration/60
 				dura_sec = info_duration%60
-				dura_min = "%2d" %dura_min
+				dura_min = "%d" %dura_min
 				dura_sec = "%02d" %dura_sec
-				dura_val = "/" + str(dura_min)+":"+str(dura_sec)
+				dura_val = " / " + str(dura_min)+":"+str(dura_sec)
 			else : 
 				dura_val = ""
 
@@ -627,7 +636,8 @@ try:
 				helper.set_contrast(daynight, contrast_day, contrast_night, device)
 			
 			with canvas(device) as draw:
-				vol_width, char = font_vol_large.getsize(song_data.volume)
+				# vol_width, char = font_vol_large.getsize(song_data.volume)
+				vol_width = font_vol_large.getlength(song_data.volume)
 				x_vol = ((display.width - vol_width) / 2)
 				# Volume Display
 				draw.text(display.vol_screen_icon_xy, volume_logo, font=font_logo_large, fill="white")
@@ -637,7 +647,7 @@ try:
 				draw.rectangle((display.vol_screen_rect[0],
 						display.vol_screen_rect[1],
 						Volume_bar_width,
-						display.vol_screen_rect[3]), outline=1, fill=1)
+						display.vol_screen_rect[3]), outline=1, fill= lightfill)
 			volume_store = song_data.volume
 			timer_vol = timer_vol - 1
 			
@@ -704,7 +714,7 @@ try:
 					
 				ci_play_line_2 = ComposableImage(helper.TextImage(device, 
 					song_data.sample_size + song_data.sample_rate + bitrate_val + " " + song_data.file_type, 
-					font=font_title_artist_line_2).image, 
+					font=font_title_artist_line_2, fill= lightfill).image, 
 					position=(0, display.title_artist_line2_y))
 								
 				scroll_play_line_1 = helper.Scroller(play_screen_composition, ci_play_line_1, 20, synchroniser, display.scroll_speed)
@@ -746,15 +756,15 @@ try:
 				if song_data.mode == "pause": 
 					draw.text(display.pause_xy, text=pause_logo, font=font_logo, fill="white")
 				else:
-					draw.text(display.title_line3_time_xy, time_val+dura_val, font=font_info, fill="white")
+					draw.text(display.title_line3_time_xy, time_val+dura_val, font=font_info, fill= lightfill)
 #				
 				draw.rectangle((display.title_timebar[0],
 					display.title_timebar[1],
 					time_bar,
-					display.title_timebar[3]), outline=0, fill=1)
+					display.title_timebar[3]), outline=0, fill= lightfill)
 
 				if song_data.fixed_volume == False :
-					draw.text(display.title_line3_volume_val_xy, song_data.volume, font=font_info, fill="white")
+					draw.text(display.title_line3_volume_val_xy, song_data.volume, font=font_info, fill= lightfill)
 
 			time.sleep(0.05)
 

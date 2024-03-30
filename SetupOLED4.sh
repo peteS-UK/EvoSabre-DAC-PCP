@@ -98,18 +98,43 @@ fi
 echo $'\n'
 
 echo "Installing python3 and freetype extension"
-tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
 
-echo $'\n'
+while read line; do
+    echo $line | grep -q PCPVERS
+        if [ $? -eq 0 ]; then
+  	        VERLINE=$(echo $line)
+        fi
+done < /usr/local/etc/pcp/pcpversion.cfg
 
-if [ "$(uname -m)" = "aarch64" ]; then
-    echo "Installing 64 bit extension"
-    tczname="oled4pcp_4-py38-64-deps.tcz"
+VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g')
 
-else
-    echo "Installing 32 bit extension"
-    tczname="oled4pcp_4-py38-deps.tcz"
+if [[ $VER == 9* ]]; 
+    then 
+        tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
+
+        echo $'\n'
+        if [ "$(uname -m)" = "aarch64" ]; then
+            echo "Installing 64 bit extension for PCP9"
+            tczname="oled4pcp9-py311-64-deps.tcz"
+        else
+            echo "Installing 32 bit extension for PCP9"
+            tczname="oled4pcp9-py311-deps.tcz"
+        fi
+    else 
+        tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
+        
+        echo $'\n'
+        if [ "$(uname -m)" = "aarch64" ]; then
+            echo "Installing 64 bit extension for PCP8"
+            tczname="oled4pcp_4-py38-64-deps.tcz"
+
+        else
+            echo "Installing 32 bit extension for PCP8"
+            tczname="oled4pcp_4-py38-deps.tcz"
+        fi
 fi
+
+
 
 sudo wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/tcz/$tczname -O /etc/sysconfig/tcedir/optional/$tczname
 

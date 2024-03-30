@@ -153,7 +153,6 @@ def make_font(name, size):
 	os.path.dirname(__file__), 'fonts', name))
 	return ImageFont.truetype(font_path, size)
 
-
 def parse_int_tuple(input):
 	return tuple(int(k.strip()) for k in input[1:-1].split(','))
 
@@ -162,21 +161,41 @@ def parse_tuple(input):
 
 
 class TextImage():
-	def __init__(self, device, text, font):
+	def __init__(self, device, text, font, fill="white"):
 		#with canvas(device) as draw:
 		#	w, h = draw.textsize(text, font)
 
 		# Change to getsize to try and workaround screen blink on canvas draw
-		#w, h = font.getsize(text)
-		
-		left, top, right, bottom = font.getbbox(text)
+#		w, h = font.getsize(text)
+#		logger.info("Width %d, height %d", w, h)
 
-		w = right
+#		with canvas(device) as draw:
+#			left, top, right, bottom = draw.textbbox((0, 0), text, font)
+#			logger.info("draw left %d, top %d, right %d, bottom %d", left, top, right, bottom)
+#			w, h = right - left, bottom - top
+
+		#left, top, right, bottom = font.getbbox(text)
+
+		#logger.info("BBox left %d, top %d, right %d, bottom %d", left, top, right, bottom)
+
+		# logger.info("getLength %d", font.getlength(text))
+
+
+		tempimage = Image.new(device.mode, device.size)
+		draw = ImageDraw.Draw(tempimage)
+		left, top, right, bottom = draw.textbbox((0, 0), text, font)
+		# logger.info("draw left %d, top %d, right %d, bottom %d", left, top, right, bottom)
+		del draw
+		del tempimage
+
+
+		w = right+2
 		h = bottom
 
 		self.image = Image.new(device.mode, (w, h))
 		draw = ImageDraw.Draw(self.image)
-		draw.text((0, 0), text, font=font, fill="white")
+		#draw.rectangle((left,top,right,bottom),outline="white")
+		draw.text((1, 0), text, font=font, fill=fill)
 		del draw
 		self.width = w
 		self.height = h
@@ -282,7 +301,10 @@ def draw_text_centered(draw,y,text,myfont, display):
 	draw.text(((display.width-text_width)/2,y),text,font=myfont,fill="white")
 	
 def draw_multiline_text_centered(draw,text,myfont, display):
-	text_width, text_height = draw.multiline_textsize(text,font=myfont)
+	# text_width, text_height = draw.multiline_textsize(text,font=myfont)
+	
+	char, char, text_width, text_height = draw.multiline_textbbox((0,0),text,font=myfont)
+
 	draw.text(((display.width-text_width)/2,(display.height-text_height)/2),text,font=myfont,fill="white",align="center")
 
 
