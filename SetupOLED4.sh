@@ -185,6 +185,27 @@ else
     echo "User Command 1 in PCP tweaks isn't blank.  Please modify to run the extension"
 fi
 
+
+if [ $si == "I2C" ]; then
+
+    echo "Enabling I2C Modules"
+    #Check if extension is set already
+    while read line; do
+        echo $line | grep -q "/sbin/modprobe i2c-dev"
+            if [ $? -eq 0 ]; then
+                MODPROBE="INSTALLED"
+                break
+            fi
+    done < /opt/bootlocal.sh
+
+    if [ "$MODPROBE" != "INSTALLED" ]; then
+        echo "/sbin/modprobe i2c_dev > /dev/null 2>&1" | sudo tee -a /opt/bootlocal.sh 1>>/dev/null
+        echo "/sbin/modprobe i2c-dev > /dev/null 2>&1" | sudo tee -a /opt/bootlocal.sh 1>>/dev/null
+    fi
+
+fi
+
+
 if [ $si == "SPI" ]; then
 
     # SPI device.  No setup needed for I2C as it's already enabled in PCP
