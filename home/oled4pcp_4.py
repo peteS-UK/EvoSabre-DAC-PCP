@@ -814,4 +814,8 @@ except Exception as e:
 	exc_type, exc_obj, exc_tb = sys.exc_info()
 	fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
 	logger.critical((exc_type, fname, exc_tb.tb_lineno))
+	logger.critical("Class : %s, Cause : %s, e: %s", e.__class__, e.__cause__, e)
+	logger.critical("Traceback : %s", e.__traceback__)
+
+
 
