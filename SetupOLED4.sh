@@ -199,10 +199,10 @@ if [ $si == "I2C" ]; then
     done < /opt/bootlocal.sh
 
     if [ "$MODPROBE" != "INSTALLED" ]; then
-        echo "/sbin/modprobe i2c_dev > /dev/null 2>&1" | sudo tee -a /opt/bootlocal.sh 1>>/dev/null
-        echo "/sbin/modprobe i2c-dev > /dev/null 2>&1" | sudo tee -a /opt/bootlocal.sh 1>>/dev/null
+        sed -ie '/^# put other system startup commands here/a /sbin/modprobe i2c_dev > /dev/null 2>&1' /opt/bootlocal.sh
+        sed -ie '/^# put other system startup commands here/a /sbin/modprobe i2c-dev > /dev/null 2>&1' /opt/bootlocal.sh
     fi
-
+    
 fi
 
 
