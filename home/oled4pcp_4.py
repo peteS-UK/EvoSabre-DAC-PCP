@@ -300,7 +300,7 @@ def decode_metadata(json):
                 song_data.volume = str(json["mixer volume"])
     except:
         song_data.fixed_volume = False
-        song_data.volume = 0
+        song_data.volume = str(0)
 
     try:
         if json["time"] != "":
