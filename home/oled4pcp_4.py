@@ -31,20 +31,23 @@
 # Add I2C support
 
 
-import sys
 import importlib
+import sys
 
-importlib.reload(sys)
-
+import json
+import logging
 import os
 import time
+import urllib.parse
 from datetime import datetime, timezone
 
-import urllib.parse
-import json
+import helper
+from luma.core.image_composition import ComposableImage, ImageComposition
+from luma.core.interface.serial import i2c, spi
+from luma.core.render import canvas
+from PIL import Image
 
-import logging
-
+importlib.reload(sys)
 
 File_Log_Format = "%(levelname)s %(asctime)s - %(message)s"
 Log_Format = "%(levelname)s	%(message)s"
@@ -68,18 +71,11 @@ logger.debug("debug 1")
 
 try:
     import requests
-except:
+except Exception:
     logger.critical("Required modules are not available.")
     logger.critical("Please check if oled extension is loaded.")
     exit("")
 
-from PIL import Image
-
-from luma.core.interface.serial import spi, i2c
-from luma.core.render import canvas
-from luma.core.image_composition import ImageComposition, ComposableImage
-
-import helper
 
 if (
     helper.process_params("LOGFILE") == "Y"
@@ -245,7 +241,7 @@ try:
     if contrast_screensave < 0 or contrast_screensave > 255:
         logger.warn("ScreenSave CONTRAST must be between 0 & 255")
         contrast_screensave = 255
-except:
+except Exception:
     logger.error("Unable to get ScreenSave CONTRAST")
 
 
@@ -288,7 +284,6 @@ else:
 
 
 def decode_metadata(json):
-
     try:
         if json["digital_volume_control"] == 0:
             song_data.fixed_volume = True
@@ -298,12 +293,12 @@ def decode_metadata(json):
             song_data.fixed_volume = False
             if json["mixer volume"] != "":
                 song_data.volume = str(json["mixer volume"])
-    except:
+    except Exception:
         song_data.fixed_volume = False
         try:
             if json["mixer volume"] != "":
                 song_data.volume = str(json["mixer volume"])
-        except:
+        except Exception:
             song_data.volume = str(0)
 
     try:
@@ -311,12 +306,12 @@ def decode_metadata(json):
             song_data.elapsed_time = float(json["time"])
         else:
             song_data.elapsed_time = 0
-    except:
+    except Exception:
         song_data.elapsed_time = 0
 
     try:
         song_data.file_type = json["playlist_loop"][0]["type"]
-    except:
+    except Exception:
         song_data.file_type = ""
 
     try:
@@ -328,7 +323,7 @@ def decode_metadata(json):
             song_data.sample_size = "32 Bit / "
         else:
             song_data.sample_size = json["playlist_loop"][0]["samplesize"]
-    except:
+    except Exception:
         song_data.sample_size = ""
 
     try:
@@ -341,7 +336,7 @@ def decode_metadata(json):
             sample_rate = "DSD128"
         elif sample_rate == "705.6k":
             sample_rate = "DSD256"
-    except:
+    except Exception:
         sample_rate = ""
     song_data.sample_rate = sample_rate
 
@@ -350,7 +345,7 @@ def decode_metadata(json):
             song_data.bitrate = str(json["playlist_loop"][0]["bitrate"])
         else:
             song_data.bitrate = ""
-    except:
+    except Exception:
         song_data.bitrate = ""
 
     try:
@@ -358,34 +353,34 @@ def decode_metadata(json):
             song_data.duration = float(json["playlist_loop"][0]["duration"])
         else:
             song_data.duration = 0
-    except:
+    except Exception:
         song_data.duration = 0
 
     try:
         song_data.mode = json["mode"]
-    except:
+    except Exception:
         song_data.mode = "stop"
 
     try:
         song_data.artist = json["playlist_loop"][0]["artist"]
-    except:
+    except Exception:
         song_data.artist = ""
     if song_data.artist == "":
         song_data.artist = "No Artist"
 
     try:
         song_data.remote_title = json["remoteMeta"]["title"]
-    except:
+    except Exception:
         song_data.remote_title = ""
 
     try:
         song_data.title = json["playlist_loop"][0]["title"]
-    except:
+    except Exception:
         song_data.title = ""
 
     try:
         song_data.album = json["playlist_loop"][0]["album"]
-    except:
+    except Exception:
         song_data.album = ""
 
     if song_data.album == "":
@@ -403,7 +398,7 @@ def get_metadata():
             )
             logger.debug("Metadata Response : %s", status)
 
-        except:
+        except Exception:
             server_connect()
         else:
             break
@@ -413,7 +408,6 @@ def get_metadata():
 def server_connect():
     while True:
         try:
-
             global player_ip
             global player_mac
             global lms_ip
@@ -483,11 +477,10 @@ try:
     bufsizefile = open("/sys/module/spidev/parameters/bufsiz", "r")
     bufsize = int(bufsizefile.read().strip())
     bufsizefile.close()
-except:
+except Exception:
     bufsize = 0
 
 if bufsize >= 8192:
-
     logo_name = display.logo_file_name
     logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), logo_name))
 
@@ -550,7 +543,7 @@ ip_screen_composition = ImageComposition(device)
 play_screen_composition = ImageComposition(device)
 volume_screen_composition = ImageComposition(device)
 
-if is_wifi == False:
+if not is_wifi:
     # LAN IP Address
     network_logo = link_logo
 else:
@@ -569,7 +562,7 @@ ip_screen_composition.add_image(
         position=display.time_ip_val_xy,
     )
 )
-if song_data.fixed_volume == False:
+if not song_data.fixed_volume:
     ip_screen_composition.add_image(
         ComposableImage(
             helper.TextImage(device, volume_logo, font=font_logo, fill=lightfill).image,
@@ -585,17 +578,16 @@ if song_data.fixed_volume == False:
 
 try:
     while True:
-
         # Check to see if the state has changed
         try:
             subscription_event = urllib.parse.unquote(
                 subscription_server_handle.read(preserve_encoding=True)
             )
-        except:
+        except Exception:
             try:
                 subscription_server_handle.disconnect()
                 logger.info("Subscription Failed, reconnecting")
-            except:
+            except Exception:
                 # Subscription has failed - reconnect
                 logger.info("Subscription Failed, reconnecting")
             server_connect()
@@ -640,7 +632,6 @@ try:
             )
             != file_info_store
         ):
-
             # Current file or state is different to last loop
 
             current_TA_page = "title"
@@ -649,7 +640,7 @@ try:
 
             try:
                 del scroll_play_line_1
-            except:
+            except Exception:
                 logger.debug("Removal Failed")
 
             ci_play_line_1 = ComposableImage(
@@ -668,7 +659,7 @@ try:
 
             try:
                 info_duration = song_data.duration
-            except:
+            except Exception:
                 info_duration = 0
 
             if song_data.sample_rate != "":
@@ -684,7 +675,7 @@ try:
 
             try:
                 del scroll_play_line_2
-            except:
+            except Exception:
                 logger.debug("No bitrate to remove")
 
             ci_play_line_2 = ComposableImage(
@@ -736,7 +727,7 @@ try:
             time_min = "%2d" % time_min
             time_sec = "%02d" % time_sec
             time_val = str(time_min) + ":" + str(time_sec)
-        except:
+        except Exception:
             time_val = 0
 
         # Check to see if day night has changed and change the contrast accordingly
@@ -749,10 +740,9 @@ try:
                 helper.set_contrast(daynight, contrast_day, contrast_night, device)
 
         # Volume change screen.  Will only show if it's not fixed volume.
-        if song_data.volume != volume_store and song_data.fixed_volume == False:
+        if song_data.volume != volume_store and not song_data.fixed_volume:
             timer_vol = 20
         if timer_vol > 0:
-
             if screen_sleep >= display.screensave_timeout:
                 # The screensaver was showing
                 # reset screen saver counter
@@ -800,7 +790,6 @@ try:
 
         # Play screen
         elif song_data.mode != "stop":
-
             if screen_sleep >= display.screensave_timeout:
                 # The screensaver was showing
                 # reset screen saver counter
@@ -816,13 +805,13 @@ try:
             # Switch over the lines after 150 cycles
 
             # if (cycle_count == 150 and scrolling == False) or title_scroll_completed == True:
-            if cycle_count == 150 and permit_screen_change == True:
+            if cycle_count == 150 and permit_screen_change:
                 # Swap to artist & album
                 logger.debug("Swapping to Artist")
                 try:
                     del scroll_play_line_1
                     del scroll_play_line_2
-                except:
+                except Exception:
                     logger.debug("No Image to remove")
 
                 ci_play_line_1 = ComposableImage(
@@ -859,7 +848,7 @@ try:
 
             if (
                 cycle_count > 150
-                and permit_screen_change == True
+                and permit_screen_change
                 and current_TA_page == "title"
             ):
                 # Scrolling is finished
@@ -867,7 +856,7 @@ try:
 
             if (
                 cycle_count == 300
-                and permit_screen_change == True
+                and permit_screen_change
                 and current_TA_page == "artist"
             ):
                 # Swap to title & bitrate
@@ -875,7 +864,7 @@ try:
                 try:
                     del scroll_play_line_1
                     del scroll_play_line_2
-                except:
+                except Exception:
                     logger.debug("No Image to remove")
 
                 ci_play_line_1 = ComposableImage(
@@ -920,7 +909,7 @@ try:
 
             if (
                 cycle_count > 300
-                and permit_screen_change == True
+                and permit_screen_change
                 and current_TA_page == "artist"
             ):
                 # Scrolling is finished
@@ -930,16 +919,23 @@ try:
                 cycle_count > 150 and current_TA_page == "title"
             ):
                 # Waiting for a scroll to finish before changing display
-                scroll_play_line_1_state = scroll_play_line_1.tick(redraw=False)
-                scroll_play_line_2_state = scroll_play_line_2.tick(redraw=False)
+                try:
+                    scroll_play_line_1_state = scroll_play_line_1.tick(redraw=False)
+                    scroll_play_line_2_state = scroll_play_line_2.tick(redraw=False)
+                except Exception:
+                    scroll_play_line_1_state = 1
+                    scroll_play_line_2_state = 1
             else:
-                scroll_play_line_1_state = scroll_play_line_1.tick()
-                scroll_play_line_2_state = scroll_play_line_2.tick()
+                try:
+                    scroll_play_line_1_state = scroll_play_line_1.tick()
+                    scroll_play_line_2_state = scroll_play_line_2.tick()
+                except Exception:
+                    scroll_play_line_1_state = 1
+                    scroll_play_line_2_state = 1
 
             if (scroll_states[scroll_play_line_1_state] == "WAIT_SCROLL") and (
                 scroll_states[scroll_play_line_2_state] == "WAIT_SCROLL"
             ):
-
                 permit_screen_change = True
 
             else:
@@ -950,7 +946,6 @@ try:
             cycle_count += 1
 
             with canvas(device, background=play_screen_composition()) as draw:
-
                 play_screen_composition.refresh()
 
                 # Bottom line
@@ -977,7 +972,7 @@ try:
                     fill=lightfill,
                 )
 
-                if song_data.fixed_volume == False:
+                if song_data.fixed_volume:
                     draw.text(
                         display.title_line3_volume_val_xy,
                         song_data.volume,
@@ -991,7 +986,6 @@ try:
             # Time IP screen
             if screen_sleep < display.screensave_timeout:
                 with canvas(device, background=ip_screen_composition()) as draw:
-
                     ip_screen_composition.refresh()
 
                     draw.text(
@@ -1000,7 +994,7 @@ try:
                         font=font_time_large,
                         fill="white",
                     )
-                    if song_data.fixed_volume == False:
+                    if song_data.fixed_volume:
                         draw.text(
                             display.time_vol_val_xy,
                             song_data.volume,
@@ -1031,7 +1025,7 @@ try:
                                     screensave_xy[0],
                                     int(display.height - screensave_height),
                                 )
-                        except:
+                        except Exception:
                             screensave_xy = (screensave_xy[0], 0)
                         screen_sleep = display.screensave_timeout + 1
                     screensave_xy = (screensave_xy[0] + 2, screensave_xy[1])
