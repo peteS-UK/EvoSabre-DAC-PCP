@@ -143,7 +143,7 @@ def set_contrast(daynight, contrast_day, contrast_night, device):
         logger.error("Unable to set device Contrast")
 
 
-def lms_request(lms_ip, playermac, params, field=""):
+def lms_request(lms_ip, lms_port, playermac, params, field=""):
     data = (
         '{ "id": 1, "method": "slim.request", "params": ["'
         + playermac
@@ -154,11 +154,11 @@ def lms_request(lms_ip, playermac, params, field=""):
     # logger.debug("data is %s", data)
     if len(field) > 0:
         response = requests.post(
-            "http://" + lms_ip + ":9000/jsonrpc.js", data=data
+            "http://" + lms_ip + ":" + str(lms_port) + "/jsonrpc.js", data=data
         ).json()["result"][field]
     else:
         response = requests.post(
-            "http://" + lms_ip + ":9000/jsonrpc.js", data=data
+            "http://" + lms_ip + ":" + str(lms_port) + "/jsonrpc.js", data=data
         ).json()["result"]
 
     return response
@@ -558,11 +558,14 @@ def get_player_ip(default_gateway_interface):
 
 
 def get_lms_ip(player_ip):
+    config = read_config()
+    http_port = int(config["CONFIG"].get("http_port", 9000))
+
     if len(process_params("LMSIP")) > 1:
-        return process_params("LMSIP"), ""
+        return process_params("LMSIP"), http_port, ""
 
     if get_pcp_config("SERVER_IP") != "":
-        return get_pcp_config("SERVER_IP"), ""
+        return get_pcp_config("SERVER_IP"), http_port, ""
 
     # Discover the LMS IP Address
     logger.info("Discovering LMS IP")
@@ -596,4 +599,4 @@ def get_lms_ip(player_ip):
         finally:
             sock.close()
 
-    return lms_ip, lms_name
+    return lms_ip, http_port, lms_name

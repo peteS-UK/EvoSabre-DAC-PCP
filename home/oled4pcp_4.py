@@ -394,7 +394,7 @@ def get_metadata():
     while True:
         try:
             status = helper.lms_request(
-                lms_ip, player_mac, '"status", "-", 1, "tags:galdIrTNo"'
+                lms_ip, lms_port, player_mac, '"status", "-", 1, "tags:galdIrTNo"'
             )
             logger.debug("Metadata Response : %s", status)
 
@@ -411,10 +411,12 @@ def server_connect():
             global player_ip
             global player_mac
             global lms_ip
+            global lms_port
+            global lms_name
 
             player_ip = helper.get_player_ip(default_gateway_interface)
 
-            lms_ip, lms_name = helper.get_lms_ip(player_ip)
+            lms_ip, lms_port, lms_name = helper.get_lms_ip(player_ip)
 
             player_mac = str(helper.get_player_mac(default_gateway_interface))
 
@@ -447,11 +449,13 @@ def server_connect():
 
             logger.info(
                 "LMS Version: %s",
-                helper.lms_request(lms_ip, "", '"version", "?"', "_version"),
+                helper.lms_request(lms_ip, lms_port, "", '"version", "?"', "_version"),
             )
             logger.info(
                 "Player Name: %s",
-                helper.lms_request(lms_ip, player_mac, '"name", "?"', "_value"),
+                helper.lms_request(
+                    lms_ip, lms_port, player_mac, '"name", "?"', "_value"
+                ),
             )
 
         except Exception as e:
