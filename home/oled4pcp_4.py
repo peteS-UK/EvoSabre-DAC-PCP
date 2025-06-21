@@ -988,7 +988,10 @@ try:
 
         else:
             # Time IP screen
-            if screen_sleep < display.screensave_timeout:
+            if (
+                screen_sleep < display.screensave_timeout
+                or display.screensave_timeout == 0
+            ):
                 with canvas(device, background=ip_screen_composition()) as draw:
                     ip_screen_composition.refresh()
 
