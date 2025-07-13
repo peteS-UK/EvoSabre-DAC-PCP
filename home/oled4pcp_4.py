@@ -261,6 +261,7 @@ font_banner_logo = helper.make_font(
     display.font_audiophonics, display.banner_logo_font_size
 )
 font_time_large = helper.make_font(display.font_time, display.time_large_font_size)
+font_time_small = helper.make_font(display.font_time, display.logo_font_size)
 font_logo = helper.make_font(display.font_logo, display.logo_font_size)
 font_logo_large = helper.make_font(display.font_logo, display.logo_large_font_size)
 
@@ -562,7 +563,7 @@ ip_screen_composition.add_image(
 )
 ip_screen_composition.add_image(
     ComposableImage(
-        helper.TextImage(device, player_ip, font=font_info, fill=lightfill).image,
+        helper.TextImage(device, player_ip, font=font_time_small, fill=lightfill).image,
         position=display.time_ip_val_xy,
     )
 )
@@ -998,11 +999,11 @@ try:
                         font=font_time_large,
                         fill="white",
                     )
-                    if song_data.fixed_volume:
+                    if not song_data.fixed_volume:
                         draw.text(
                             display.time_vol_val_xy,
                             song_data.volume,
-                            font=font_info,
+                            font=font_time_small,
                             fill="white",
                         )
                 screen_sleep = screen_sleep + 1

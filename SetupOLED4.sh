@@ -108,7 +108,7 @@ done < /usr/local/etc/pcp/pcpversion.cfg
 
 VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g')
 
-if [[ $VER == 9* ]]; 
+if [[ $VER == 9* || $VER == 10* ]]; 
     then 
         tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
 
