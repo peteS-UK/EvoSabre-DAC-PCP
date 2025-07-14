@@ -108,8 +108,21 @@ done < /usr/local/etc/pcp/pcpversion.cfg
 
 VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g')
 
-if [[ $VER == 9* || $VER == 10* ]]; 
-    then 
+
+case $VER in
+    10*)
+        tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
+
+        echo $'\n'
+        if [ "$(uname -m)" = "aarch64" ]; then
+            echo "Installing 64 bit extension for PCP10"
+            tczname="oled4pcp10-py311-64-deps.tcz"
+        else
+            echo "Installing 32 bit extension for PCP10"
+            tczname="oled4pcp10-py311-deps.tcz"
+        fi
+        ;;
+    9*)
         tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
 
         echo $'\n'
@@ -120,7 +133,8 @@ if [[ $VER == 9* || $VER == 10* ]];
             echo "Installing 32 bit extension for PCP9"
             tczname="oled4pcp9-py311-deps.tcz"
         fi
-    else 
+        ;;
+    *)
         tce-load -iw python3.8 freetype 1>>/dev/null 2>>/dev/null
         
         echo $'\n'
@@ -132,9 +146,8 @@ if [[ $VER == 9* || $VER == 10* ]];
             echo "Installing 32 bit extension for PCP8"
             tczname="oled4pcp_4-py38-deps.tcz"
         fi
-fi
-
-
+        ;;
+esac
 
 sudo wget -q https://raw.githubusercontent.com/peteS-UK/EvoSabre-DAC-PCP/main/tcz/$tczname -O /etc/sysconfig/tcedir/optional/$tczname
 
