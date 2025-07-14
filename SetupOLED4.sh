@@ -106,8 +106,7 @@ while read line; do
         fi
 done < /usr/local/etc/pcp/pcpversion.cfg
 
-VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g')
-
+VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g' | sed -e 's/^[[:space:]]*//')
 
 case $VER in
     10*)
