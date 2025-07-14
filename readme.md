@@ -1,4 +1,4 @@
-# OLED Control for PCP 7.x, 8.X & 9.X & Configuration for Audiophonics EvoSabre DAC
+# OLED Control for PCP 7.x, 8.X, 9.X & 10.X & Configuration for Audiophonics EvoSabre DAC
 
 ## Background
 
@@ -6,7 +6,9 @@ This project began to allow me to control the second OLED screen on the excellen
 
 As such, there's now 2 sections to this document.  The first section involves the installation and configuration of the OLED scripts for PCP, and the second relates to configuration of PCP for the Audiophonics EvoSabre DAC, setup Infrared etc..
 
-Both of these processes assume that you're starting with a fresh install of PCP 7 or 8, which is connected to your network via ethernet or WiFi and that you have the ability to SSH onto your PCP.  You can use either 32bit or 64bit versions of PCP.
+Both of these processes assume that you're starting with a fresh install of PCP, which is connected to your network via ethernet or WiFi and that you have the ability to SSH onto your PCP.  You can use either 32bit or 64bit versions of PCP.
+
+**Note** The luma.core modules do not currently support RPI5, so the script does not work on RPI5 or CM5 currently.
 
 ## Functionality
 
