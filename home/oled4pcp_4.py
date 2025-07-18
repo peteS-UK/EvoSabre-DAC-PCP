@@ -776,7 +776,7 @@ try:
                     int(float(song_data.volume))
                     * (display.vol_screen_rect[2] - display.vol_screen_rect[0])
                     / 100
-                )
+                ) + display.vol_screen_rect[0]
                 draw.rectangle(
                     (
                         display.vol_screen_rect[0],
