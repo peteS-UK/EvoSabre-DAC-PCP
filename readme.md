@@ -8,8 +8,6 @@ As such, there's now 2 sections to this document.  The first section involves th
 
 Both of these processes assume that you're starting with a fresh install of PCP, which is connected to your network via ethernet or WiFi and that you have the ability to SSH onto your PCP.  You can use either 32bit or 64bit versions of PCP.
 
-**Note** The luma.core modules do not currently support RPI5, so the script does not work on RPI5 or CM5 currently.
-
 ## Functionality
 
 The purpose of the script is to display information from the LMS on the OLED.
