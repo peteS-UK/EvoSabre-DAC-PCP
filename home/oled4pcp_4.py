@@ -977,7 +977,7 @@ try:
                     fill=lightfill,
                 )
 
-                if song_data.fixed_volume:
+                if not song_data.fixed_volume:
                     draw.text(
                         display.title_line3_volume_val_xy,
                         song_data.volume,
