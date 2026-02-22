@@ -109,6 +109,18 @@ done < /usr/local/etc/pcp/pcpversion.cfg
 VER=$(echo $VERLINE | awk -F'PCPVERS="piCorePlayer' '{print $2}' | sed 's/"//g' | sed -e 's/^[[:space:]]*//')
 
 case $VER in
+    11*)
+        tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
+
+        echo $'\n'
+        if [ "$(uname -m)" = "aarch64" ]; then
+            echo "Installing 64 bit extension for PCP11"
+            tczname="oled4pcp11-py311-64-deps.tcz"
+        else
+            echo "Installing 32 bit extension for PCP11"
+            tczname="oled4pcp11-py311-deps.tcz"
+        fi
+        ;;
     10*)
         tce-load -iw python3.11 freetype 1>>/dev/null 2>>/dev/null
 
